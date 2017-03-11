@@ -1,7 +1,3 @@
-#####<a href="../../README.html">&#9664; Projects index</a>
-
-<style type="text/css">p + ul, p + ol { margin-top: -1em !important;  }</style>
-
 Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis
 ===
 
