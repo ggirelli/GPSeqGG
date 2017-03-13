@@ -136,7 +136,7 @@ function input_int() {
 		[[ "$v" =~ ^([+-]?[0-9]+|[+-]?[.0-9]+[e]?[0-9]+)$ ]]; cond=$?
 	done
 
-	echo -e "$k: $v\n"
+	echo -e "$k: $v"
 }
 
 function input_fname() {
@@ -188,7 +188,7 @@ function input_fname() {
 			echo -e "$fname not found. Proceeding without $description.\n"
 			v=''
 		else
-			echo -e "$fname:\n$v\n"
+			echo -e "$fname:\n$v"
 		fi
 	fi
 }

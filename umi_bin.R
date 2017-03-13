@@ -13,10 +13,10 @@
 
 # DEPENDENCIES =================================================================
 
-library(argparser)
-library(data.table)
-library(parallel)
-library(readr)
+suppressMessages(library(argparser))
+suppressMessages(library(data.table))
+suppressMessages(library(parallel))
+suppressMessages(library(readr))
 
 # INPUT ========================================================================
 
@@ -30,10 +30,10 @@ parser = add_argument(parser, arg = 'experiment',
 	help = 'Experiment ID (e.g., TK26).')
 parser = add_argument(parser, arg = 'conditions',
 	help = 'Comma-separated conditions (e.g., 400U2h,200U1h).')
-parser = add_argument(parser, arg = 'cutsites',
-	help = 'File containing the cutsite positions. (chr | pos)')
 parser = add_argument(parser, arg = 'chrlengths',
 	help = 'File containing the chromosome lengths. (chr | len)')
+parser = add_argument(parser, arg = '--cutsites', flag = T,
+	help = 'Whether cutsites where used.')
 
 # Define elective arguments
 parser = add_argument(parser, arg = '--bin-size', short = '-i',
@@ -42,7 +42,7 @@ parser = add_argument(parser, arg = '--bin-size', short = '-i',
 parser = add_argument(parser, arg = '--bin-step', short = '-t',
 	help = 'Distance between the starting point of consecutive bins in bp.',
 	default = 1e5, type = class(0))
-parser = add_argument(parser, arg = '--num-proc', short = '-c',
+parser = add_argument(parser, arg = '--num-proc', short = '-p',
 	help = 'Number of cores for parallel computation.',
 	default = 1, type = class(0))
 parser = add_argument(parser, arg = '--suffix',
@@ -93,7 +93,7 @@ bin_summary = function(i, bins, st) {
 
 	# Count expected in-bin cutsites
 	cs <- 0
-	if ( file.exists(cutsites) ) {
+	if ( cutsites ) {
 		cs <- csbin[[paste0('chr', chr)]][i]
 	}
 	if ( 0 == length(cs) ) cs <- 0
@@ -157,7 +157,7 @@ chr_summary = function(st, c, bin_size, num_proc) {
 
 	# Log
 	cat(paste0(' >>> Working on chr', chr,
-		' [', length(bins)-1, ' bins].\n'))
+		' [', length(bins)-1, ' bins]\n'))
 
 	# Per bin
 	t <- rbindlist(lapply(1:(length(bins) - 1),
@@ -173,7 +173,7 @@ chr_summary = function(st, c, bin_size, num_proc) {
 # Read files -------------------------------------------------------------------
 
 # Retrieve chr length
-cat(' >>> Retrieve chromosome lengths ...\n')
+cat(' >>> Retrieve chromosome lengths ...')
 c <- read_delim(chrlengths,	'\t', col_names = c('chr', 'len'), col_types = 'ci')
 
 # From chrN to N
@@ -183,7 +183,7 @@ c$chr <- as.numeric(unlist(lapply(c$chr,
 	FUN = function(x) { substr(x, 4, nchar(x)) })))
 
 # Retrieve binned cutsites, to normalize later on
-if ( file.exists(cutsites) ) {
+if ( cutsites ) {
 	rdata_path = paste0(dirpath, '/cs_per_bin.bsize', bin_size,
 		'.bstep', bin_step, '.RData')
 
@@ -201,19 +201,19 @@ umi_tab <- lapply(conditions,
 	FUN = function(condition) {
 
 		# Retrieve UMIs
-		cat('\n · Retrieve UMIs for ', condition , '...\n')
+		cat(paste0('\n · Retrieve UMIs for "', condition , '"...\n'))
 		fname <- 'UMIpos.unique'
-		if ( file.exists(cutsites) ) fname <- paste0(fname, '.atcs')
+		if ( cutsites ) fname <- paste0(fname, '.atcs')
 		u <- read.delim(paste0(dirpath, condition, '/', fname, suff, '.txt'),
 			as.is = T, header = F)
 		colnames(u) <- c('chr', 'pos', 'seq')
 
 		# Add UMI count
-		cat(' · Add UMI counts to ', condition , '...\n')
+		cat(paste0(' · Add UMI counts to "', condition , '"...\n'))
 		u$count <- unlist(lapply(strsplit(u$seq, ' '), length))
 
 		# Add UMI probability
-		cat(' · Add CS probabilities to ', condition , '...\n')
+		cat(paste0(' · Add CS probabilities to "', condition , '"...\n'))
 		u$p <- u$count / sum(u$count)
 
 		# Re-order chromosomes

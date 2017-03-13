@@ -13,9 +13,9 @@
 
 # DEPENDENCIES =================================================================
 
-library(argparser)
-library(parallel)
-library(readr)
+suppressMessages(library(argparser))
+suppressMessages(library(parallel))
+suppressMessages(library(readr))
 
 # INPUT ========================================================================
 
@@ -66,7 +66,7 @@ if ( file.exists(cutsites) ) {
 	colnames(el) <- c('chr', 'pos')
 
 	# Count cutsites per bin ---------------------------------------------------
-	cat('\nCounting cutsites per bin, bin_size:', bin_size, ' ...\n')
+	cat('Counting cutsites per bin, bin_size:', bin_size, ' ...\n')
 
 	# Per chromosome
 	csbin <- by(el, el$chr,

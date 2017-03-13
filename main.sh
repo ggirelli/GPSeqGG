@@ -30,10 +30,10 @@ source $scriptdir/main.functions.sh
 
 # Help string
 helps="
- usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
+usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
  [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
- [-p platform][-u umiLength][-r csRange][-z binSize][-b binStep][-l csList]
- [-m maskFile][-s chrLengths]
+ [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
+ [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
  Description:
   Run a step-by-step interactive GPSeq sequencing data analysis.
@@ -65,18 +65,13 @@ helps="
   -p platform	Sequencing platform. Default: 'L'.
   -u umilength	UMI sequence length. Default: 8.
   -r csRange	Range around cutsite for UMI assignment. Default: 40.
-  -z binSize	Bin size. Default: 1e6.
-  -b binStep	Bin step. Default: 1e5.
-  -l csList	File with cutsite list. Columns: chr|pos
-  -m maskFile	File with masked regions. Columns: id|chr|start|end
-  -s chrLengths	File with chromosome lengths. chr|len
   -j emax	Maximum error probability for read quality filtering. Default: 1e-3.
   -k eperc	Maximum % of bases with emax error probability. Default: 20.
-
- Examples:
-  ./main.sh -h
-  ./main.sh sample/settings.sh
-  ./main.sh -y sample/settings.sh
+  -z binSize	Bin size. Default: 1e6.
+  -b binStep	Bin step. Default: 1e5.
+  -l csList	File with cutsite list. Columns: chr|pos. No header.
+  -m maskFile	File with masked regions. Columns: id|chr|start|end. No header.
+  -s chrLengths	File with chromosome lengths. chr|len. No header.
 "
 
 # Default values
@@ -523,7 +518,7 @@ execute_step $dontask 'SAM filtering' filter_sam
 
 # PREPARE UMI ------------------------------------------------------------------
 function prepare_umi() {
-	echo -e 'UMI\n=====================grouping&deduplicating ===================================\n'
+	echo -e 'UMI grouping & deduplicating\n=====================\n'
 
 	# Get cutsite list file by input
 	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
@@ -605,12 +600,6 @@ function bin_step() {
 	input_fname 'Chr length file' \
 		'lengths of chromosomes in the specified genome version' $chrLengths
 	chrlengths=$v
-	if [ -z "$chrLengths" ]; then
-		msg="A list of chromosome lengths is required for the last steps."
-		msg="$msg\nExit."
-		echo -e "$msg"
-		exit 1
-	fi
 
 	cslbool=0
 	if [[ -n $csList ]]; then
@@ -625,8 +614,13 @@ function bin_step() {
 
 	# Bin UMIs -----------------------------------------------------------------
 	echo -e "\nBinning UMIs ..."
-	$scriptdir/umi_bin.R -i $binSize -t $binStep -c $threads \
-		$out/ $expID $conds $csList $chrLengths & pid0=$!
+	if [ -z "$csList" ]; then
+		$scriptdir/umi_bin.R -i $binSize -t $binStep -p $threads \
+			$out/ $expID $conds $chrLengths & pid0=$!
+	else
+		$scriptdir/umi_bin.R -c -i $binSize -t $binStep -p $threads \
+			$out/ $expID $conds $chrLengths & pid0=$!
+	fi
 	wait $pid0
 
 }
@@ -656,13 +650,19 @@ function analyze_umi() {
 	# Get maskfile by input
 	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
 	maskFile=$v
+	if [ -z "$maskFile" ]; then
+		msg="A list of masked regions is required for the plot step."
+		msg="$msg\nExit."
+		echo -e "$msg"
+		exit 1
+	fi
 
 	# Get chrlengths by input
 	input_fname 'Chr length file' \
 		'lengths of chromosomes in the specified genome version' $chrLengths
 	chrLengths=$v
 	if [ -z "$chrLengths" ]; then
-		msg="A list of chromosome lengths is required for the last steps."
+		msg="A list of chromosome lengths is required for the plot step."
 		msg="$msg\nExit."
 		echo -e "$msg"
 		exit 1
