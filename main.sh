@@ -38,6 +38,12 @@ helps="
  Description:
   Run a step-by-step interactive GPSeq sequencing data analysis.
 
+ Required files:
+  Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
+  input directory (inDir). The patterns file should have a condition per row
+  with condition name, pattern (scan_for_mateches format) and pattern length
+  separated by tabulations.
+
  Mandatory arguments:
   -i indir	Input directory.
   -o outdir	Output directory. Created if not found.
@@ -276,7 +282,7 @@ fi
 
 # Settings header
 settings="
- # SETTINGS
+# SETTINGS
 "
 if [ 1 -eq $dontask ]; then
 	settings="$settings
@@ -289,12 +295,12 @@ settings="$settings
  Input directory:\t$indir
  Output directory:\t$outdir
  
- Experiment ID:\t$expID
- Conditions:\t$conds"
+ Experiment ID: $expID
+ Conditions: $conds"
 if [ -n "$neg" ]; then
-	settings="$settings\n Negative:\t$neg"
+	settings="$settings\n Negative: $neg"
 else
-	settings="$settings\n !!! No negative condition."
+	settings="$settings\n!!! No negative condition."
 fi
 
 # Other settings
@@ -304,19 +310,19 @@ settings="$settings
 
  Cutsite sequence: $cutsite
  Reference genome: $refGenome
- Aligner:\t$aligner"
+ Aligner: $aligner"
 if [ -n $bwaIndex ]; then
-	settings="$settings\n BWA index:\t$bwaIndex"
+	settings="$settings\n BWA index: $bwaIndex"
 fi
 
 settings="$settings
  MAPQ threshold: $mapqThr
  Platforhm: $platform
 
- UMI length:\t$umiLength nt
- Cutsite range:\t$csRange nt
- Max error probability:\t$emax
- Max emax bases percentage:\t$eperc%
+ UMI length: $umiLength nt
+ Cutsite range: $csRange nt
+ Max error probability: $emax
+ Max emax bases percentage: $eperc%
 
  Bin size: $binSize nt
  Bin step: $binStep nt
@@ -333,17 +339,11 @@ if [ -n "$chrLengths" ]; then
 	settings="$settings\n Chromosome lengths:\n $chrLengths\n"
 fi
 
-# START LOG ====================================================================
-{
-
 # Print settings
 echo -e "$settings"
 
 # Ask the user to double-check everything
 check_settings
-
-# Start
-echo -e '# START ===========================================================\n'
 
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
@@ -357,8 +357,12 @@ out=$outdir/ && mkdir -p $out
 outcontrol=$outdir/tmp && mkdir -p $outcontrol
 logpath="$out/log"
 
-# Genome reference
-refgen=$DATA/BiCro-Resources/genomes/$refGenome/list.fa
+# START LOG ====================================================================
+{
+
+# Start
+echo -e "$settings
+START\n=====================\n"
 
 # LOAD DATA FILES ==============================================================
 
@@ -376,7 +380,7 @@ rm filelist
 
 # QUALITY CONTROL --------------------------------------------------------------
 function quality_control() {
-	echo -e '# Quality control ==============================================\n'
+	echo -e 'Quality control\n=====================\n'
 	# Produce quality control summarie(s)
 	time $scriptdir/quality_control.sh -t $threads -o $out -1 $r1 -2 $r2
 }
@@ -384,7 +388,7 @@ execute_step $dontask 'quality control' quality_control
 
 # FILE GENERATION --------------------------------------------------------------
 function file_generation() {
-	echo -e '# File generation ==============================================\n'
+	echo -e 'File generation\n=====================\n'
 	# Generate necessary files
 	time $scriptdir/files_prepare.sh -t $threads -o $in -1 $r1 -2 $r2
 }
@@ -392,7 +396,7 @@ execute_step $dontask 'file generation' file_generation
 
 # PATTERN FILTERING ------------------------------------------------------------
 function pattern_filtering() {
-	echo -e '# Pattern filtering ============================================\n'
+	echo -e 'Pattern filtering\n=====================\n'
 
 	# Count total reads
 	echo -e "\nCounting total reads..."
@@ -403,7 +407,6 @@ function pattern_filtering() {
 
 	# Work on single conditions
 	patfiles="$indir/pat_files"
-	IFS=',' read -r -a condv <<< "$conds"
 	for condition in "${condv[@]}"; do
 		echo -e "\nWorking on condition '$condition'..."
 
@@ -439,20 +442,19 @@ execute_step $dontask 'pattern_filtering' pattern_filtering
 
 # ALIGNMENT --------------------------------------------------------------------
 function alignment() {
-	echo -e '# Alignment ====================================================\n'
+	echo -e 'Alignment\n=====================\n'
 
 	header=`head -n 1 $out/summary`
 	echo -e "$header\tmapped/prefix\tproperly_paired\tinter_chr" \
 		> $outcontrol/summarytmp
 
-	IFS=',' read -r -a condv <<< "$conds"
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
 		echo -e "\nAligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
 		$scriptdir/reads_trim.sh \
-			-t $threads -o $out $c "$condition" -p $patfiles
+			-t $threads -o $out -c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
 		if [ $numb_of_files -eq 2 ]; then
@@ -499,13 +501,12 @@ execute_step $dontask 'alignment' alignment
 
 # Filter SAM -------------------------------------------------------------------
 function filter_sam() {
-	echo -e '# SAM filtering ================================================\n'
+	echo -e 'SAM filtering\n=====================\n'
 
 	# Get mapq threshold by input
 	input_int 30 'MAPQ threshold' $mapqThr
 	mapqthr=$v
 
-	IFS=',' read -r -a condv <<< "$conds"
 	for condition in "${condv[@]}"; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
@@ -522,7 +523,7 @@ execute_step $dontask 'SAM filtering' filter_sam
 
 # PREPARE UMI ------------------------------------------------------------------
 function prepare_umi() {
-	echo -e '# UMI grouping&deduplicating ===================================\n'
+	echo -e 'UMI\n=====================grouping&deduplicating ===================================\n'
 
 	# Get cutsite list file by input
 	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
@@ -573,7 +574,6 @@ function prepare_umi() {
 			fi
 		fi
 	}
-	IFS=',' read -r -a condv <<< "$conds"
 	for condition in "${condv[@]}"; do
 		time prepare_umi_single_condition
 	done
@@ -583,15 +583,15 @@ execute_step $dontask 'UMI preparation' prepare_umi
 
 # BIN UMI ----------------------------------------------------------------------
 function bin_step() {
-	echo -e '# Binning ======================================================\n'
+	echo -e 'Binning\n=====================\n'
 
-	# Get binsize by input
+	# Get binSize by input
 	input_int 1e6 'Binsize' $binSize
-	binsize=$v
+	binSize=$v
 
-	# Get binstep by input
+	# Get binStep by input
 	input_int 1e6 'Binstep' $binStep
-	binstep=$v
+	binStep=$v
 
 	# Get cutsite list file by input
 	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
@@ -605,6 +605,12 @@ function bin_step() {
 	input_fname 'Chr length file' \
 		'lengths of chromosomes in the specified genome version' $chrLengths
 	chrlengths=$v
+	if [ -z "$chrLengths" ]; then
+		msg="A list of chromosome lengths is required for the last steps."
+		msg="$msg\nExit."
+		echo -e "$msg"
+		exit 1
+	fi
 
 	cslbool=0
 	if [[ -n $csList ]]; then
@@ -628,7 +634,7 @@ execute_step $dontask 'binning' bin_step
 
 # ANALYZE UMI ------------------------------------------------------------------
 function analyze_umi() {
-	echo -e '# Plotting =====================================================\n'
+	echo -e 'Plotting\n=====================\n'
 
 	# Get cutsite list file by input
 	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
@@ -639,22 +645,28 @@ function analyze_umi() {
 		cslbool=1
 	fi
 
-	# Get binsize by input
+	# Get binSize by input
 	input_int 1e6 'Binsize' $binSize
-	binsize=$v
+	binSize=$v
 
-	# Get binstep by input
+	# Get binStep by input
 	input_int 1e6 'Binstep' $binStep
-	binstep=$v
+	binStep=$v
 
 	# Get maskfile by input
 	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
-	maskfile=$v
+	maskFile=$v
 
 	# Get chrlengths by input
 	input_fname 'Chr length file' \
 		'lengths of chromosomes in the specified genome version' $chrLengths
-	chrlengths=$v
+	chrLengths=$v
+	if [ -z "$chrLengths" ]; then
+		msg="A list of chromosome lengths is required for the last steps."
+		msg="$msg\nExit."
+		echo -e "$msg"
+		exit 1
+	fi
 
 	# Make multi-condition plots -----------------------------------------------
 	
