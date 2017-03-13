@@ -471,8 +471,12 @@ function alignment() {
 		samtools flagstat $cout/"$condition"/"$condition".sorted.bam \
 			> $cout/"$condition"/"$condition".bam_notes.txt
 
+		count=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
+			grep 'mapped' | head -n 1 | cut -d ' ' -f 1`
 		perc=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'mapped' | head -n 1 | cut -d '(' -f 2 | cut -d ':' -f 1`
+		count2=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
+			grep 'properly paired' | head -n 1 | cut -d ' ' -f 1`
 		perc2=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'properly paired' | head -n 1 | cut -d '(' -f 2 | \
 			cut -d ':' -f 1`

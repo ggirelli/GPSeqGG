@@ -6,6 +6,7 @@ v0.1.1
 * Moved output conditions into `conditions` subfolder.
 * Moved output plots into `plots` subfolder.
 * Added auxillary intermediate data `aux` subfolder.
+* Added counts of reads filtered from SAM in the summary.
 
 v0.1.0
 ===
