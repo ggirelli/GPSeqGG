@@ -31,7 +31,7 @@ source $scriptdir/main.functions.sh
 # Help string
 helps="
  usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
- [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-e cutsite][-q mapqThr]
+ [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-z binSize][-b binStep][-l csList]
  [-m maskFile][-s chrLengths]
 
@@ -52,9 +52,9 @@ helps="
   -y	Remove Y chromosome after alignment.
   -t threads	Number of threads for parallelization.
   -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
-  -g refGenome	Path to reference genome file.
+  -g refGenome	Path to reference genome file. Default: 'hg19'.
   -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
-  -e cutsite	Cutsite sequence. Default: 'AAGCTT' (HindIII).
+  -f cutsite	Cutsite sequence. Default: 'AAGCTT' (HindIII).
   -q mapqThr	Mapping quality threshold. Default: 30.
   -p platform	Sequencing platform. Default: 'L'.
   -u umilength	UMI sequence length. Default: 8.
@@ -64,6 +64,8 @@ helps="
   -l csList	File with cutsite list. Columns: chr|pos
   -m maskFile	File with masked regions. Columns: id|chr|start|end
   -s chrLengths	File with chromosome lengths. chr|len
+  -j emax	Maximum error probability for read quality filtering. Default: 1e-3.
+  -k eperc	Maximum % of bases with emax error probability. Default: 20.
 
  Examples:
   ./main.sh -h
@@ -77,6 +79,7 @@ threads=1
 rmX=false
 rmY=false
 aligner='bwa'
+refGenome='hg19'
 cutsite='AAGCTT'
 mapqThr=30
 platform='L'
@@ -84,9 +87,12 @@ umiLength=8
 csRange=40
 binSize=1e6
 binStep=1e5
+pthr=0
+emax=1e-3
+eperc=20
 
 # Parse options
-while getopts hyt:i:o:e:c:ng:a:d:xye:q:p:u:r:z:b:l:m:s: opt; do
+while getopts hyt:i:o:e:c:ng:a:d:xyf:q:p:u:r:z:b:j:k:l:m:s: opt; do
 	case $opt in
 		h)
 			# Help
@@ -175,7 +181,7 @@ while getopts hyt:i:o:e:c:ng:a:d:xye:q:p:u:r:z:b:l:m:s: opt; do
 			# Remove chrY after alignment
 			rmY=true
 		;;
-		e)
+		f)
 			# Cutsite sequence
 			cutsite=$OPTARG
 		;;
@@ -202,6 +208,12 @@ while getopts hyt:i:o:e:c:ng:a:d:xye:q:p:u:r:z:b:l:m:s: opt; do
 		b)
 			# Bin step nin nt
 			binStep=$OPTARG
+		;;
+		j)
+			emax=$OPTARG
+		;;
+		k)
+			eperc=$OPTARG
 		;;
 		l)
 			# File with cutsite list
@@ -285,19 +297,26 @@ else
 	settings="$settings\n !!! No negative condition."
 fi
 
-# Settings optional arguments
+# Other settings
 settings="$settings
 
  Threads: $threads
 
  Cutsite sequence: $cutsite
  Reference genome: $refGenome
- Aligner: $aligner
+ Aligner:\t$aligner"
+if [ -n $bwaIndex ]; then
+	settings="$settings\n BWA index:\t$bwaIndex"
+fi
+
+settings="$settings
  MAPQ threshold: $mapqThr
  Platforhm: $platform
 
- UMI length: $umiLength nt
- Cutsite range: $csRange nt
+ UMI length:\t$umiLength nt
+ Cutsite range:\t$csRange nt
+ Max error probability:\t$emax
+ Max emax bases percentage:\t$eperc%
 
  Bin size: $binSize nt
  Bin step: $binStep nt
@@ -324,10 +343,7 @@ echo -e "$settings"
 check_settings
 
 # Start
-echo -e '\n'
 echo -e '# START ===========================================================\n'
-
-exit 1
 
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
@@ -342,11 +358,11 @@ outcontrol=$outdir/tmp && mkdir -p $outcontrol
 logpath="$out/log"
 
 # Genome reference
-refgen=$DATA/BiCro-Resources/genomes/$genome/list.fa
+refgen=$DATA/BiCro-Resources/genomes/$refGenome/list.fa
 
 # LOAD DATA FILES ==============================================================
 
-find $indir -maxdepth 1 -type f -iname "*$experiment*R[12]*" | sort > filelist
+find $indir -maxdepth 1 -type f -iname "*$expID*R[12]*" | sort > filelist
 numb_of_files=`cat filelist | wc -l`
 r1=`cat filelist | head -n1`
 echo "R1 is " $r1
@@ -362,7 +378,7 @@ rm filelist
 function quality_control() {
 	echo -e '# Quality control ==============================================\n'
 	# Produce quality control summarie(s)
-	time $scriptdir/quality_control.sh -t $numbproc -o $out -1 $r1 -2 $r2
+	time $scriptdir/quality_control.sh -t $threads -o $out -1 $r1 -2 $r2
 }
 execute_step $dontask 'quality control' quality_control
 
@@ -370,7 +386,7 @@ execute_step $dontask 'quality control' quality_control
 function file_generation() {
 	echo -e '# File generation ==============================================\n'
 	# Generate necessary files
-	time $scriptdir/files_prepare.sh -t $numbproc -o $in -1 $r1 -2 $r2
+	time $scriptdir/files_prepare.sh -t $threads -o $in -1 $r1 -2 $r2
 }
 execute_step $dontask 'file generation' file_generation
 
@@ -401,7 +417,7 @@ function pattern_filtering() {
 		echo -e "\nPattern: $pattern"
 
 		# Identify condition-specific reads
-		time $scriptdir/pattern_filter.sh -t $numbproc -i $in \
+		time $scriptdir/pattern_filter.sh -t $threads -i $in \
 			-o "$out"/$condition -p $patfile & pid0=$!
 		wait $pid0
 
@@ -436,17 +452,17 @@ function alignment() {
 
 		# Run trimmer ----------------------------------------------------------
 		$scriptdir/reads_trim.sh \
-			-t $numbproc -o $out $c "$condition" -p $patfiles
+			-t $threads -o $out $c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
 		if [ $numb_of_files -eq 2 ]; then
 			# Paired-end
-			$scriptdir/reads_align.sh -t $numbproc -o $out -c "$condition" \
-				-p -r $genome -a $aligner
+			$scriptdir/reads_align.sh -t $threads -o $out -c "$condition" \
+				-p -r $refGenome -a $aligner
 		else
 			# Single-end
-			$scriptdir/reads_align.sh -t $numbproc -o $out -c "$condition" \
-				-r $genome -a $aligner
+			$scriptdir/reads_align.sh -t $threads -o $out -c "$condition" \
+				-r $refGenome -a $aligner
 		fi
 
 		# Update summary -------------------------------------------------------
@@ -468,7 +484,7 @@ function alignment() {
 		# Add back the UMIs to the SAM file ------------------------------------
 		echo -e " · Adding linkers to SAM file ..."
 		grep -v "^\@" $out/"$condition"/"$condition".sam | tr -s ' ' | \
-			tr '\t' ' ' | sort --parallel=$numbproc \
+			tr '\t' ' ' | sort --parallel=$threads \
 			--temporary-directory=$HOME/tmp -k1,1 | \
 			join - $out/"$condition"/filtered.r1.linkers.oneline.fq \
 			-j 1 -o 0,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.2,1.10,2.3,1.11 \
@@ -486,7 +502,7 @@ function filter_sam() {
 	echo -e '# SAM filtering ================================================\n'
 
 	# Get mapq threshold by input
-	input_int 30 'MAPQ threshold' $mapqthr
+	input_int 30 'MAPQ threshold' $mapqThr
 	mapqthr=$v
 
 	IFS=',' read -r -a condv <<< "$conds"
@@ -494,8 +510,8 @@ function filter_sam() {
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
 		# Filter SAM
-		time $scriptdir/sam_filter.R $out/$condition/ $experiment $condition \
-			-mt $mapqthr -cs $cutsite -c $numbproc & pid0=$!
+		time $scriptdir/sam_filter.R $out/$condition/ $expID $condition \
+			-mt $mapqThr -cs $cutsite -c $threads & pid0=$!
 		wait $pid0
 
 	done
@@ -509,47 +525,47 @@ function prepare_umi() {
 	echo -e '# UMI grouping&deduplicating ===================================\n'
 
 	# Get cutsite list file by input
-	input_fname 'Cutsite list file' 'a list of cutsite positions' $cutsitelist
+	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
 	cutsitelist=$v
 
 	# Get maskfile by input
-	input_fname 'Mask file' 'a list of regions to be masked' $maskfile
+	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
 	maskfile=$v
 
 	function prepare_umi_single_condition() {
 		echo -e "\nPreparing UMIs from condition '$condition'..."
 		cslbool=0
-		if [[ -n $cutsitelist ]]; then
+		if [[ -n $csList ]]; then
 			cslbool=1
 		fi
 
 		# Group UMIs -----------------------------------------------------------
-		if [[ -n $maskfile ]]; then
-			$scriptdir/umi_group.py $out/$condition/ $experiment $condition \
-				$umiLength --mask-file $maskfile & pid0=$!
+		if [[ -n $maskFile ]]; then
+			$scriptdir/umi_group.py $out/$condition/ $expID $condition \
+				$umiLength --mask-file $maskFile & pid0=$!
 			wait $pid0
 		else
-			$scriptdir/umi_group.py $out/$condition/ $experiment $condition \
+			$scriptdir/umi_group.py $out/$condition/ $expID $condition \
 				$umiLength & pid0=$!
 			wait $pid0
 		fi
 
-		if [[ -n $cutsitelist ]]; then
+		if [[ -n $csList ]]; then
 			# Assign UMIs to cutsites ------------------------------------------
-			$scriptdir/pos2cutsites.R $out/$condition/ $experiment $condition \
-				$cutsitelist -i $csrange -c $numbproc & pid0=$!
+			$scriptdir/pos2cutsites.R $out/$condition/ $expID $condition \
+				$csList -i $csRange -c $threads & pid0=$!
 			wait $pid0
 		fi
 
 		if [[ $umiLength -ne 0 ]]; then
 			# Deduplicating UMIs -----------------------------------------------
 			echo -e "\nDeduplicating UMIs ..."
-			$scriptdir/umi_dedupl.R $out/$condition/ $experiment $condition \
-				-p $platform -co $pthr -c $numbproc -cs $cslbool \
+			$scriptdir/umi_dedupl.R $out/$condition/ $expID $condition \
+				-p $platform -co $pthr -c $threads -cs $cslbool \
 				-em $emax -ep $eperc & pid0=$!
 			wait $pid0
 		else
-			if [[ -n $cutsitelist ]]; then
+			if [[ -n $csList ]]; then
 				cp $out/$condition/UMIpos.atcs.txt \
 					$out/$condition/UMIpos.unique.atcs.txt
 			else
@@ -570,41 +586,41 @@ function bin_step() {
 	echo -e '# Binning ======================================================\n'
 
 	# Get binsize by input
-	input_int 1e6 'Binsize' $binsize
+	input_int 1e6 'Binsize' $binSize
 	binsize=$v
 
 	# Get binstep by input
-	input_int 1e6 'Binstep' $binstep
+	input_int 1e6 'Binstep' $binStep
 	binstep=$v
 
 	# Get cutsite list file by input
-	input_fname 'Cutsite list file' 'a list of cutsite positions' $cutsitelist
+	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
 	cutsitelist=$v
 
 	# Get maskfile by input
-	input_fname 'Mask file' 'a list of regions to be masked' $maskfile
+	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
 	maskfile=$v
 
 	# Get chrlengths by input
 	input_fname 'Chr length file' \
-		'lengths of chromosomes in the specified genome version' $chrlengths
+		'lengths of chromosomes in the specified genome version' $chrLengths
 	chrlengths=$v
 
 	cslbool=0
-	if [[ -n $cutsitelist ]]; then
+	if [[ -n $csList ]]; then
 		cslbool=1
 	fi
 
 	# Bin cutsites -------------------------------------------------------------
 	echo -e "\nBinning cutsites ..."
-	time $scriptdir/cs_bin.R -i $binsize -t $binstep -c $numbproc \
-		$out $cutsitelist $chrlengths & pid0=$!
+	time $scriptdir/cs_bin.R -i $binSize -t $binStep -c $threads \
+		$out $csList $chrLengths & pid0=$!
 	wait $pid0
 
 	# Bin UMIs -----------------------------------------------------------------
 	echo -e "\nBinning UMIs ..."
-	$scriptdir/umi_bin.R -i $binsize -t $binstep -c $numbproc \
-		$out/ $experiment $conds $cutsitelist $chrlengths & pid0=$!
+	$scriptdir/umi_bin.R -i $binSize -t $binStep -c $threads \
+		$out/ $expID $conds $csList $chrLengths & pid0=$!
 	wait $pid0
 
 }
@@ -615,29 +631,29 @@ function analyze_umi() {
 	echo -e '# Plotting =====================================================\n'
 
 	# Get cutsite list file by input
-	input_fname 'Cutsite list file' 'a list of cutsite positions' $cutsitelist
+	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
 	cutsitelist=$v
 
 	cslbool=0
-	if [[ -n $cutsitelist ]]; then
+	if [[ -n $csList ]]; then
 		cslbool=1
 	fi
 
 	# Get binsize by input
-	input_int 1e6 'Binsize' $binsize
+	input_int 1e6 'Binsize' $binSize
 	binsize=$v
 
 	# Get binstep by input
-	input_int 1e6 'Binstep' $binstep
+	input_int 1e6 'Binstep' $binStep
 	binstep=$v
 
 	# Get maskfile by input
-	input_fname 'Mask file' 'a list of regions to be masked' $maskfile
+	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
 	maskfile=$v
 
 	# Get chrlengths by input
 	input_fname 'Chr length file' \
-		'lengths of chromosomes in the specified genome version' $chrlengths
+		'lengths of chromosomes in the specified genome version' $chrLengths
 	chrlengths=$v
 
 	# Make multi-condition plots -----------------------------------------------
@@ -649,8 +665,8 @@ function analyze_umi() {
 	if [[ -n $neg ]]; then flags="$flags --neg $neg"; fi
 
 	# Run plotting script
-	$scriptdir/umi_plot.R $flags -i $binsize -t $binstep -c $numbproc \
-		$out/ $experiment $conds $cutsitelist $chrlengths $maskfile & pid0=$!
+	$scriptdir/umi_plot.R $flags -i $binSize -t $binStep -c $threads \
+		$out/ $expID $conds $csList $chrLengths $maskFile & pid0=$!
 	wait $pid0
 
 }
