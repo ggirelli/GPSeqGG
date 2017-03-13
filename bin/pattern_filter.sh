@@ -105,7 +105,7 @@ wait $pid3
 
 echo "Generating filtered R1 fastq file ..."
 # Use FA to generate FQ
-cat $out_dir/"$condition"/filtered.r1.fa | grep '>' | tr '>' '@' | \
+cat $out_dir/filtered.r1.fa | grep '>' | tr '>' '@' | \
 	cut -d ':' -f -7 | sort --parallel=$threads \
 	--temporary-directory=$HOME/tmp -k1,1 | \
 	join -t $'\t' - $in_dir/r1oneline.fq | tr '\t' '\n' \

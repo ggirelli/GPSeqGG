@@ -76,12 +76,11 @@ binstring <- paste0('.bsize', bin_size, '.bstep', bin_step)
 
 # RUN ==========================================================================
 
-dir.create(paste0(dirpath, 'plots'), showWarnings = F)
-
 # File input -------------------------------------------------------------------
 
 # Load UMItable
-l <- load(paste0(dirpath, experiment, '.umi_table', binstring, '.RData'))
+l <- load(paste0(dirpath, '/aux/',
+	experiment, '.umi_table', binstring, '.RData'))
 
 # Get list of present chromosomes
 chr_list <- unique(unlist(lapply(umi_tab, names)))

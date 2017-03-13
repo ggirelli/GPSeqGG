@@ -3,6 +3,9 @@ v0.1.1
 
 * Now using getopt in main.sh.
 * Moved code to `bin` subfolder.
+* Moved output conditions into `conditions` subfolder.
+* Moved output plots into `plots` subfolder.
+* Added auxillary intermediate data `aux` subfolder.
 
 v0.1.0
 ===

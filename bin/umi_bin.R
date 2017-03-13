@@ -184,7 +184,7 @@ c$chr <- as.numeric(unlist(lapply(c$chr,
 
 # Retrieve binned cutsites, to normalize later on
 if ( cutsites ) {
-	rdata_path = paste0(dirpath, '/cs_per_bin.bsize', bin_size,
+	rdata_path = paste0(dirpath, '/aux/cs_per_bin.bsize', bin_size,
 		'.bstep', bin_step, '.RData')
 
 	if ( file.exists(rdata_path) ) {
@@ -204,8 +204,8 @@ umi_tab <- lapply(conditions,
 		cat(paste0('\n · Retrieve UMIs for "', condition , '"...\n'))
 		fname <- 'UMIpos.unique'
 		if ( cutsites ) fname <- paste0(fname, '.atcs')
-		u <- read.delim(paste0(dirpath, condition, '/', fname, suff, '.txt'),
-			as.is = T, header = F)
+		u <- read.delim(paste0(dirpath, '/conditions/', condition, '/',
+			fname, suff, '.txt'), as.is = T, header = F)
 		colnames(u) <- c('chr', 'pos', 'seq')
 
 		# Add UMI count
@@ -240,8 +240,8 @@ umi_tab <- lapply(conditions,
 		# Output 1 -------------------------------------------------------------
 
 		# Export multi-chromosome condition-specific UMI table
-		fname = paste0(dirpath, condition, '/', experiment, '.', condition,
-			'.umi_table.bsize', bin_size, '.bstep', bin_step, '.tsv')
+		fname = paste0(dirpath, '/conditions/', condition, '/', experiment, '.',
+			condition, '.umi_table.bsize', bin_size, '.bstep', bin_step, '.tsv')
 		write.table(rt, fname, quote = F, row.names = F, sep = '\t')
 
 		return(r)
@@ -252,7 +252,7 @@ names(umi_tab) <- conditions
 # Output 2 ---------------------------------------------------------------------
 
 # Save multi-condition umi_table
-save('umi_tab', file = paste0(dirpath, experiment, '.umi_table',
+save('umi_tab', file = paste0(dirpath, '/aux/', experiment, '.umi_table',
 	'.bsize', bin_size, '.bstep', bin_step, '.RData'))
 
 # END --------------------------------------------------------------------------

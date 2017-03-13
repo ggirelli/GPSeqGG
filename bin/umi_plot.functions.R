@@ -45,7 +45,8 @@ plotUMIdistrib = function(
 			# Read unique UMI file
 			fname <- 'UMIpos.unique'
 			if ( file.exists(cutsites) ) fname <- paste0(fname, '.atcs')
-			fname = paste0(dirpath, condition, '/', fname, suff, '.txt')
+			fname = paste0(dirpath, 'conditions/', condition, '/',
+				fname, suff, '.txt')
 			t <- read.delim(fname, header = F)
 			colnames(t) <- c('chr', 'pos', 'seq')
 
@@ -68,7 +69,7 @@ plotUMIdistrib = function(
 
 	# Save the data and plot
 	save('cum_umi_count',
-		file = paste0(dirpath, experiment, '.umi_distribution.RData'))
+		file = paste0(dirpath, 'aux/', experiment, '.umi_distribution.RData'))
 	pdf(paste0(dirpath, "plots/", experiment, '.umi_distribution', suff, '.pdf'),
 		width = 10, height = 10)
 
@@ -507,7 +508,8 @@ plotChrwideVar = function(
 		FUN=function(condition) {
 			fname <- 'UMIpos.unique'
 			if ( file.exists(cutsites) ) fname <- paste0(fname, '.atcs')
-			fname = paste0(dirpath, condition, '/', fname, suff, '.txt')
+			fname = paste0(dirpath, 'conditions/', condition, '/',
+				fname, suff, '.txt')
 			u <- read.delim(fname, as.is = T, header = F)
 			colnames(u) <- c('chr', 'pos', 'seq')
 
@@ -630,7 +632,7 @@ plotGenome = function(
 	# Input --------------------------------------------------------------------
 	
 	# Read umi_tab
-	load(paste0(dirpath, '/', experiment, '.umi_table.bsize',
+	load(paste0(dirpath, 'aux/', experiment, '.umi_table.bsize',
 		bin_size, '.bstep', bin_step, '.RData'))
 
 	# Read maskfile
