@@ -122,9 +122,8 @@ fi
 # Paired-end alignment ---------------------------------------------------------
 if [[ 1 -eq $paired ]]; then
 	echo " · Performing paired-end alignment ..."
-
 	# BWA alignment
-	if [ -n $aligner -o "bwa" == $aligner ]; then
+	if [ -n "$aligner" -a "bwa" == "$aligner" ]; then
 		bwa mem -t $threads $bwaIndex \
 			$out_dir/"$condition"/filtered.r1.noLinker.fq \
 			$out_dir/"$condition"/filtered.r2.fq \
@@ -132,8 +131,7 @@ if [[ 1 -eq $paired ]]; then
 			2> $out_dir/"$condition"/bwa.log
 
 	# Bowtie2 alignment
-	elif [[ 'bowtie2' == $aligner ]]; then
-		
+	elif [ "bowtie2" == "$aligner" ]; then
 		bowtie2 -q -p $threads \
 			-1 $out_dir/"$condition"/filtered.r1.noLinker.fq \
 			-2 $out_dir/"$condition"/filtered.r2.fq \
@@ -149,14 +147,14 @@ else
 	echo " · Performing single-end alingment ..."
 
 	# BWA alignment
-	if [ -n $aligner -o "bwa" == $aligner ]; then
+	if [ -n "$aligner" -a "bwa" == "$aligner" ]; then
 		bwa mem -t $threads $bwaIndex \
 			$out_dir/"$condition"/filtered.r1.noLinker.fq \
 			> $out_dir/"$condition"/"$condition".sam \
 			2> $out_dir/"$condition"/bwa.log
 
 	# Bowtie2 alignment
-	elif [[ 'bowtie2' == $aligner ]]; then
+	elif [[ 'bowtie2' == "$aligner" ]]; then
 		
 		bowtie2 -q -p $threads \
 			-U $out_dir/"$condition"/filtered.r1.noLinker.fq \
@@ -169,9 +167,9 @@ else
 fi
 
 # Save log ---------------------------------------------------------------------
-if [ -n $aligner -o "bwa" == $aligner ]; then
+if [ -n "$aligner" -o "bwa" == "$aligner" ]; then
 	cat $out_dir/"$condition"/bwa.log
-elif [[ 'bowtie2' == $aligner ]]; then
+elif [[ 'bowtie2' == "$aligner" ]]; then
 	cat $out_dir/"$condition"/bowtie2.log
 else
 	echo -e "ERROR: unrecognized aligner."

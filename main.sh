@@ -30,21 +30,40 @@ source $scriptdir/main.functions.sh
 
 # Help string
 helps="
- usage: ./main.sh [-h][-y] -s settingsFile
+ usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
+ [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-e cutsite][-q mapqThr]
+ [-p platform][-u umiLength][-r csRange][-z binSize][-b binStep][-l csList]
+ [-m maskFile][-s chrLengths]
 
  Description:
   Run a step-by-step interactive GPSeq sequencing data analysis.
 
- Required env:
-  $DATA
-  $REPO: the $REPO
-
  Mandatory arguments:
-  -s settingsFile	BASH settings file (see sample/settings.sh).
+  -i indir	Input directory.
+  -o outdir	Output directory. Created if not found.
+  -e expID	Experiment ID.
+  -c conditions	Comma-separated conditions.
 
  Optional arguments:
   -h	Show this help page.
   -y	Perform every step of the pipeline without asking.
+  -n	Negative present. Expected label: neg;
+  -x	Remove X chromosome after alignment.
+  -y	Remove Y chromosome after alignment.
+  -t threads	Number of threads for parallelization.
+  -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
+  -g refGenome	Path to reference genome file.
+  -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
+  -e cutsite	Cutsite sequence. Default: 'AAGCTT' (HindIII).
+  -q mapqThr	Mapping quality threshold. Default: 30.
+  -p platform	Sequencing platform. Default: 'L'.
+  -u umilength	UMI sequence length. Default: 8.
+  -r csRange	Range around cutsite for UMI assignment. Default: 40.
+  -z binSize	Bin size. Default: 1e6.
+  -b binStep	Bin step. Default: 1e5.
+  -l csList	File with cutsite list. Columns: chr|pos
+  -m maskFile	File with masked regions. Columns: id|chr|start|end
+  -s chrLengths	File with chromosome lengths. chr|len
 
  Examples:
   ./main.sh -h
@@ -54,57 +73,268 @@ helps="
 
 # Default values
 dontask=0
+threads=1
+rmX=false
+rmY=false
+aligner='bwa'
+cutsite='AAGCTT'
+mapqThr=30
+platform='L'
+umiLength=8
+csRange=40
+binSize=1e6
+binStep=1e5
 
 # Parse options
-while getopts hys: opt; do
-	case $dontask in
+while getopts hyt:i:o:e:c:ng:a:d:xye:q:p:u:r:z:b:l:m:s: opt; do
+	case $opt in
 		h)
+			# Help
 			echo -e "$helps"
 			exit 0
 		;;
 		y)
+			# Automatic
 			dontask=1
 		;;
+		t)
+			# Threads
+			if [ 0 -ge "$OPTARG" ]; then
+				echo -e "Enforcing a minimum of 1 thread.\n"
+			else
+				threads=$OPTARG
+			fi
+		;;
+		i)
+			# Input directory
+			if [ -d "$OPTARG" ]; then
+				indir=$OPTARG
+			else
+				msg="Invalid -i option, folder not found.\nFolder: $OPTARG"
+				echo -e "$helps\n!!! $msg"
+				exit 1
+			fi
+		;;
+		o)
+			# Output directory
+			outdir=$OPTARG
+			if [ ! -d "$OPTARG" ]; then
+				msg="Output folder not found, creating it."
+				mkdir -p $outdir
+			fi
+		;;
+		e)
+			# Experiment ID
+			expID=$OPTARG
+		;;
+		c)
+			# Comma-separated condition string
+			conds=$OPTARG
+			# Condition array
+			IFS=',' read -r -a condv <<< "$conds"
+		;;
+		n)
+			# Negative condition label
+			neg='neg'
+		;;
+		g)
+			# File with cutsite list
+			if [ -e $OPTARG ]; then
+				refGenome=$OPTARG
+			else
+				msg="Invalid -g option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n!!! $msg"
+				exi 1
+			fi
+		;;
+		a)
+			# Aligner
+			if [ 'bwa' == "$OPTARG" -o 'bowtie2' == "$OPTARG" ]; then
+				aligner=$OPTARG
+			else
+				msg="Invalid -a option. Available values: 'bwa', 'bowtie2'."
+				echo -e "$helps\n!!! $msg"
+				exit 1
+			fi
+		;;
+		d)
+			# File with cutsite list
+			if [ -e $OPTARG ]; then
+				bwaIndex=$OPTARG
+			else
+				msg="Invalid -d option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n!!! $msg"
+				exi 1
+			fi
+		;;
+		x)
+			# Remove chrX after alignment
+			rmX=true
+		;;
+		y)
+			# Remove chrY after alignment
+			rmY=true
+		;;
+		e)
+			# Cutsite sequence
+			cutsite=$OPTARG
+		;;
+		q)
+			# Mapping quality threshold
+			mapqThr=$OPTARG
+		;;
+		p)
+			# Sequencing platform
+			platform=$OPTARG
+		;;
+		u)
+			# UMI length in nt
+			umiLength=$OPTARG
+		;;
+		r)
+			# Range around cutsite
+			csRange=$OPTARG
+		;;
+		z)
+			# Bin size in nt
+			binSize=$OPTARG
+		;;
+		b)
+			# Bin step nin nt
+			binStep=$OPTARG
+		;;
+		l)
+			# File with cutsite list
+			if [ -e $OPTARG ]; then
+				csList=$OPTARG
+			else
+				msg="Invalid -e option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n!!! $msg"
+				exi 1
+			fi
+		;;
+		m)
+			# File with masked regions
+			if [ -e $OPTARG ]; then
+				maskFile=$OPTARG
+			else
+				msg="Invalid -m option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n!!! $msg"
+				exi 1
+			fi
+		;;
 		s)
-			if [ -e "$OPTARG" ]; then
-				settingsFile=$OPTARG
+			# File with chromosome lengths
+			if [ -e $OPTARG ]; then
+				chrLengths=$OPTARG
 			else
 				msg="Invalid -s option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n$msg"
-				exit 1
+				echo -e "$helps\n!!! $msg"
+				exi 1
 			fi
 		;;
 	esac
 done
 
 # Check mandatory options
-if [ -z "$settingsFile" ]; then
-	echo -e "$helps\n!!! Missing mandatory -s option.\n"
+if [ -z "$indir" ]; then
+	echo -e "$helps\n!!! Missing mandatory -i option.\n"
+	exit 1
+fi
+if [ -z "$outdir" ]; then
+	echo -e "$helps\n!!! Missing mandatory -o option.\n"
+	exit 1
+fi
+if [ -z "$expID" ]; then
+	echo -e "$helps\n!!! Missing mandatory -e option.\n"
+	exit 1
+fi
+if [ -z "$conds" ]; then
+	echo -e "$helps\n!!! Missing mandatory -c option.\n"
 	exit 1
 fi
 
-# Read settings file -----------------------------------------------------------
-. $settingsFile
+# Additional checks
+if [ "bwa" == "$aligner" -a -z "$bwaIndex" ]; then
+	echo -e "$helps\n!!! Missing mandatory -d option.\n"
+	exit 1
+fi
 
 # Check settings ---------------------------------------------------------------
 
-# Print settings
-echo -e '# SETTINGS ========================================================'
-cat $settingsFile
+# Settings header
+settings="
+ # SETTINGS
+"
+if [ 1 -eq $dontask ]; then
+	settings="$settings
+ Perform EVERY step of the pipeline.
+"
+fi
 
-# Check settings
-check_settings # from main.functions
+# Settings mandatory options
+settings="$settings
+ Input directory:\t$indir
+ Output directory:\t$outdir
+ 
+ Experiment ID:\t$expID
+ Conditions:\t$conds"
+if [ -n "$neg" ]; then
+	settings="$settings\n Negative:\t$neg"
+else
+	settings="$settings\n !!! No negative condition."
+fi
+
+# Settings optional arguments
+settings="$settings
+
+ Threads: $threads
+
+ Cutsite sequence: $cutsite
+ Reference genome: $refGenome
+ Aligner: $aligner
+ MAPQ threshold: $mapqThr
+ Platforhm: $platform
+
+ UMI length: $umiLength nt
+ Cutsite range: $csRange nt
+
+ Bin size: $binSize nt
+ Bin step: $binStep nt
+"
+
+# Additional files
+if [ -n "$csList" ]; then
+	settings="$settings\n Cutsites:\n $csList\n"
+fi
+if [ -n "$maskFile" ]; then
+	settings="$settings\n Masked regions:\n $maskFile\n"
+fi
+if [ -n "$chrLengths" ]; then
+	settings="$settings\n Chromosome lengths:\n $chrLengths\n"
+fi
+
+# START LOG ====================================================================
+{
+
+# Print settings
+echo -e "$settings"
+
+# Ask the user to double-check everything
+check_settings
+
+# Start
+echo -e '\n'
+echo -e '# START ===========================================================\n'
+
+exit 1
 
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
 # Input folders
-datadir=$DATA/BiCro-Data/Sequencing
-indir=$datadir/$experiment && mkdir -p $indir
-in=$datadir/$experiment/indata && mkdir -p $in
+in=$indir/indata && mkdir -p $in
 
 # Output folders
-resdir=$DATA/BiCro-Analysis/Sequencing
-outdir=$resdir/$experiment
 out=$outdir/ && mkdir -p $out
 
 # Additional outputs
@@ -113,12 +343,6 @@ logpath="$out/log"
 
 # Genome reference
 refgen=$DATA/BiCro-Resources/genomes/$genome/list.fa
-
-# START LOG ====================================================================
-
-{
-echo -e '\n'
-echo -e '# START ===========================================================\n'
 
 # LOAD DATA FILES ==============================================================
 
@@ -302,11 +526,11 @@ function prepare_umi() {
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n $maskfile ]]; then
 			$scriptdir/umi_group.py $out/$condition/ $experiment $condition \
-				$umi_length --mask-file $maskfile & pid0=$!
+				$umiLength --mask-file $maskfile & pid0=$!
 			wait $pid0
 		else
 			$scriptdir/umi_group.py $out/$condition/ $experiment $condition \
-				$umi_length & pid0=$!
+				$umiLength & pid0=$!
 			wait $pid0
 		fi
 
@@ -317,7 +541,7 @@ function prepare_umi() {
 			wait $pid0
 		fi
 
-		if [[ $umi_length -ne 0 ]]; then
+		if [[ $umiLength -ne 0 ]]; then
 			# Deduplicating UMIs -----------------------------------------------
 			echo -e "\nDeduplicating UMIs ..."
 			$scriptdir/umi_dedupl.R $out/$condition/ $experiment $condition \

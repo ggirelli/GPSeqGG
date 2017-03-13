@@ -15,56 +15,29 @@
 # CHECK FUNCTIONS ==============================================================
 
 function check_settings() {
-	echo -e '\nChecking settings...'
-
-	# Check that there are no missing settings ---------------------------------
-
-	# The experiment ID is required
-	if [[ -z $experiment ]]; then
-		msg="\n !ERROR!\n An experiment ID is required.\n"
-		msg="$msg Please specify the 'experiment' field in the settings file.\n"
-		echo -e $msg
-		exit 1
-	fi
-
-	# The comma-separated conditions are required
-	if [[ -z conditions ]]; then
-		msg="\n !ERROR!\n At least one condition is required.\n"
-		msg="$msg Please specify the 'conditions' field in the settings file.\n"
-		echo -e $msg
-		exit 1
-	fi
-
-	# Check that elective settings are present, otherwise fall back to default -
+	# Give the user the time to check the settings.
 	
-
-	# Elective settings
-	vars=($numbproc $genome $aligner $rmX $rmY $cutsite $mapqthr $platform \
-		$umi_length $binsize $binstep $csrange $pthr $emax $eperc)
-
-	# Elective setting names
-	fields=('numbproc' 'genome' 'aligner' 'rmX' 'rmY' 'cutsite' 'mapqthr' \
-		'platform' 'umi_length' 'binsize' 'binstep' 'csrange' 'pthr' \
-		'emax' 'eperc')
-
-	# Elective setting default values
-	defaults=(8 'hg19' 'bwa' false true 'AAGCTT' 30 'L' 8 1e6 1e5 40 0 1e-3 20)
-
-	# Cycle counter
-	field_id=0
-	# Iterate through the elective settings
-	while [[ $field_id -lt ${#fields[@]} ]]; do
-		# If unset, fall back to default
-		if [[ -z ${vars[$field_id]} ]]; then
-			msg="\n !WARNING!\n"
-			msg="$msg No '${fields[$field_id]}' field in the settings file.\n"
-			msg="$msg Using default: ${defaults[$field_id]}\n"
+	msg="Please, double check the settings."
+	msg="$msg\nRun the analysis?\nYes (y), Abort (a)"
+	echo -e $msg
+	read -e ans
+	
+	end=0
+	while [[ 0 -eq $end ]]; do
+		if [[ -z $ans ]]; then
 			echo -e $msg
-			eval "${fields[$field_id]}=${defaults[$field_id]}"
+			read -e ans
+		elif [[ 'a' == $ans ]]; then
+			end=1
+			echo "Aborted."
+			exit 1
+		elif [[ 'y' == $ans ]]; then
+			echo -e "\n"
+			end=1
+		else
+			echo -e $msg
+			read -e ans
 		fi
-
-		# Increment counter
-		field_id=$(($field_id + 1))
 	done
 }
 
