@@ -28,35 +28,62 @@ source $scriptdir/main.functions.sh
 
 # CHECK OPTIONS ================================================================
 
-# Run HELP ---------------------------------------------------------------------
+# Help string
+helps="
+ usage: ./main.sh [-h][-y] -s settingsFile
 
-opt=$1
-if [[ ${opt:0:1} == '-' ]]; then
-	if [ $opt == '-h' ]; then
-		cat 'docs/main.help'
-		exit 1
-	fi
-fi
+ Description:
+  Run a step-by-step interactive GPSeq sequencing data analysis.
 
-# Check params -----------------------------------------------------------------
+ Required env:
+  $DATA
+  $REPO: the $REPO
 
-if [ "$#" -lt 1 ]; then
-	echo -e "Correct usage:\n./main [-opt] settingsFile"
+ Mandatory arguments:
+  -s settingsFile	BASH settings file (see sample/settings.sh).
+
+ Optional arguments:
+  -h	Show this help page.
+  -y	Perform every step of the pipeline without asking.
+
+ Examples:
+  ./main.sh -h
+  ./main.sh sample/settings.sh
+  ./main.sh -y sample/settings.sh
+"
+
+# Default values
+dontask=0
+
+# Parse options
+while getopts hys: opt; do
+	case $dontask in
+		h)
+			echo -e "$helps"
+			exit 0
+		;;
+		y)
+			dontask=1
+		;;
+		s)
+			if [ -e "$OPTARG" ]; then
+				settingsFile=$OPTARG
+			else
+				msg="Invalid -s option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n$msg"
+				exit 1
+			fi
+		;;
+	esac
+done
+
+# Check mandatory options
+if [ -z "$settingsFile" ]; then
+	echo -e "$helps\n!!! Missing mandatory -s option.\n"
 	exit 1
 fi
 
 # Read settings file -----------------------------------------------------------
-
-opt=$1
-if [[ ${opt:0:1} == '-' ]]; then
-	if [ "$#" -lt 2 ]; then
-		echo -e "Correct usage:\n./main [-opt] settingsFile"
-		exit 1
-	fi
-	settingsFile=$2
-else
-	settingsFile=$1
-fi
 . $settingsFile
 
 # Check settings ---------------------------------------------------------------
@@ -113,7 +140,7 @@ function quality_control() {
 	# Produce quality control summarie(s)
 	time $scriptdir/quality_control.sh -t $numbproc -o $out -1 $r1 -2 $r2
 }
-execute_step $opt 'quality control' quality_control
+execute_step $dontask 'quality control' quality_control
 
 # FILE GENERATION --------------------------------------------------------------
 function file_generation() {
@@ -121,7 +148,7 @@ function file_generation() {
 	# Generate necessary files
 	time $scriptdir/files_prepare.sh -t $numbproc -o $in -1 $r1 -2 $r2
 }
-execute_step $opt 'file generation' file_generation
+execute_step $dontask 'file generation' file_generation
 
 # PATTERN FILTERING ------------------------------------------------------------
 function pattern_filtering() {
@@ -168,7 +195,7 @@ function pattern_filtering() {
 	done
 
 }
-execute_step $opt 'pattern_filtering' pattern_filtering
+execute_step $dontask 'pattern_filtering' pattern_filtering
 
 # ALIGNMENT --------------------------------------------------------------------
 function alignment() {
@@ -228,7 +255,7 @@ function alignment() {
 	mv $outcontrol/summarytmp $out/summary
 
 }
-execute_step $opt 'alignment' alignment
+execute_step $dontask 'alignment' alignment
 
 # Filter SAM -------------------------------------------------------------------
 function filter_sam() {
@@ -250,7 +277,7 @@ function filter_sam() {
 	done
 
 }
-execute_step $opt 'SAM filtering' filter_sam
+execute_step $dontask 'SAM filtering' filter_sam
 
 
 # PREPARE UMI ------------------------------------------------------------------
@@ -312,7 +339,7 @@ function prepare_umi() {
 	done
 
 }
-execute_step $opt 'UMI preparation' prepare_umi
+execute_step $dontask 'UMI preparation' prepare_umi
 
 # BIN UMI ----------------------------------------------------------------------
 function bin_step() {
@@ -357,7 +384,7 @@ function bin_step() {
 	wait $pid0
 
 }
-execute_step $opt 'binning' bin_step
+execute_step $dontask 'binning' bin_step
 
 # ANALYZE UMI ------------------------------------------------------------------
 function analyze_umi() {
@@ -403,7 +430,7 @@ function analyze_umi() {
 	wait $pid0
 
 }
-time execute_step $opt 'UMI analysis' analyze_umi
+time execute_step $dontask 'UMI analysis' analyze_umi
 
 # END --------------------------------------------------------------------------
 

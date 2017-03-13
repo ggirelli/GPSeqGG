@@ -74,7 +74,7 @@ function execute_step() {
 	# execute_step opt stepname funcname
 	# 
 	# Executes steps of the pipeline asking for confirmation.
-	# If $opt == '-y' then the step is automatically executed.
+	# If $opt == 1 then the step is automatically executed.
 	
 	if [ "$#" -lt 3 ]; then
 		echo -e "Correct usage: execute_step $opt step_name funcname\n"
@@ -85,7 +85,7 @@ function execute_step() {
 	step=$2
 	f=$3
 
-	if [[ $opt == '-y' ]]; then
+	if [[ $opt == 1 ]]; then
 		ans='y'
 	else
 		msg="\nRun $step?\nYes (y), Skip (s), Abort (a)"

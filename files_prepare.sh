@@ -42,7 +42,7 @@ while getopts ht:o:1:2: opt; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
-			exit 1
+			exit 0
 		;;
 		t)
 			if [ 0 -ge "$OPTARG" ]; then
@@ -82,11 +82,11 @@ done
 # Check mandatory options
 if [ -z "$r1" ]; then
 	echo -e "$helps\n!!! Missing mandatory -1 option.\n"
-	exit 0
+	exit 1
 fi
 if [ -z "$out_dir" ]; then
 	echo -e "$helps\n!!! Missing mandatory -o option.\n"
-	exit 0
+	exit 1
 fi
 
 # RUN ==========================================================================
