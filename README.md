@@ -3,24 +3,50 @@ Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis
 
 ## The `main` script
 
-    `main` runs the GPSeq sequencing data analysis pipeline.
+```
+usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
+ [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
+ [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
+ [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
-    Correct usage: `./main [-opt] settingsFile`
+ Description:
+  Run a step-by-step interactive GPSeq sequencing data analysis.
 
-    Required files:
-        $DATA/BiCro-Data/<expName>/ folder containing *R1* [and *R2*] file[s]
-        $DATA/BiCro-Data/<expName>/patfiles, a tab-separated file with condition|pattern|pattern_length
-        $REPO/GPSeq/Sequencing/ folder containing the scripts
+ Required files:
+  Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
+  input directory (inDir). The patterns file should have a condition per row
+  with condition name, pattern (scan_for_mateches format) and pattern length
+  separated by tabulations.
 
-    Options:
-        `-h`  Shows this help page
-        `-y`  Don't ask and perform every step.
-        settingsFile path to a settings.sh file
-    
-    Examples:
-        `./main -h`
-        `./main settings.sh`
-        `./main -y settings.sh`
+ Mandatory arguments:
+  -i indir      Input directory.
+  -o outdir     Output directory. Created if not found.
+  -e expID      Experiment ID.
+  -c conditions Comma-separated conditions.
+
+ Optional arguments:
+  -h            Show this help page.
+  -y            Perform every step of the pipeline without asking.
+  -n            Negative present. Expected label: neg;
+  -x            Remove X chromosome after alignment.
+  -y            Remove Y chromosome after alignment.
+  -t threads    Number of threads for parallelization.
+  -a aligner    Aligner. Either 'bwa' (default) or 'bowtie2'.
+  -g refGenome  Path to reference genome file. Default: 'hg19'.
+  -d bwaIndex   Path to BWA index file. Required if BWA is the selected aligner.
+  -f cutsite    Cutsite sequence. Default: 'AAGCTT' (HindIII).
+  -q mapqThr    Mapping quality threshold. Default: 30.
+  -p platform   Sequencing platform. Default: 'L'.
+  -u umilength  UMI sequence length. Default: 8.
+  -r csRange    Range around cutsite for UMI assignment. Default: 40.
+  -j emax       Maximum error probability for read quality filtering. Default: 1e-3.
+  -k eperc      Maximum % of bases with emax error probability. Default: 20.
+  -z binSize    Bin size. Default: 1e6.
+  -b binStep    Bin step. Default: 1e5.
+  -l csList     File with cutsite list. Columns: chr|pos. No header.
+  -m maskFile   File with masked regions. Columns: id|chr|start|end. No header.
+  -s chrLengths File with chromosome lengths. chr|len. No header.
+```
 
 #### Pipeline steps
 
@@ -32,7 +58,7 @@ The steps performed by `main` are the following:
     * Count total reads and prepare `summary` file
     * Run `./pattern_filtering.sh` per condition and update the `summary` file
 4. Perform read alignment.
-    * First, run `reads_trim.sh` trim the pattern from the R1 reads (length specified in `pat_files`)
+    * First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `pat_files`)
     * Run `./reads_align.sh` and update summary with fraction of mapped reads
     * Add the patterns to the SAM files (condition.linker.sam)
 5. Filters the SAM file. (this step requires a specified `mapqthr` setting)
@@ -53,70 +79,9 @@ Description of different output files.
 
 #### Input
 
-Two files are required: a `settings.sh` file used as input for the `main` script, and a `pat_files` file in the input directory, which contains the pattern to recognize the different conditions. Please, have a look at the following sample `settings.sh` file.
+At least two files are required: a sequencing platform output file (R1), and a `pat_files` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
 
-        
-    # -------- #
-    # SETTINGS #
-    # -------- #
-
-    # GENERAL
-    # ------------------------------
-    experiment='TK20'               # Experiment ID
-    conds='neg,1min,10min,2h'       # Comma-separated conditions list
-    neg='neg'                       # Specify negative control label, if present
-    numbproc=30                     # Number of threads to use
-
-    # ALIGNMENT
-    # ------------------------------
-    genome='hg19'                   # Reference genome
-    aligner='bwa'                   # Aligner: 'bwa' or 'bowtie2'
-    # SAM filtering
-
-    # ------------------------------
-    cutsite='AAGCTT'                # Cutsite
-    mapqthr=30                      # MAPQ threshold for SAM filtering
-    platform='L'                    # Sequencing platform used
-                                    #   S - Sanger, Phred+33
-                                    #   X - Solexa, Solexa+64
-                                    #   I - Illumina 1.3+, Phred+64
-                                    #   J - Illumina 1.5+, Phred+64
-                                    #   L - Illumina 1.8+, Phred+33
-    rmX=false                       # Remove X chromosome data
-    rmY=true                        # Remove Y chromosome data
-
-    # UMI analysis
-    # ------------------------------
-    umi_length=8                    # UMI length in nt
-    binsize=1e6                     # Window size for UMI analysis
-    binstep=1e5                     # Distance from consecutive windows
-    csrange=40                      # Window around cutsites (if cutsitelist is provided)
-
-    # Automatic filtering based on read identity probability
-    pthr=0                          # Threshold for UMI identity probability
-                                    # Set pthr=1 to use the automatic cutoff
-                                    # Set pthr=0 to skip automatic filtering
-                                    # The cutoff used is the smaller between pthr and the automatic one.
-
-    # Automatic filtering based on read quality
-    emax=1e-3                       # Maximum error probability for filtering.
-    eperc=20                        # Maximum percentage of bases with emax error probability.
-
-    # FILE PATHS
-    # ------------------------------
-    # P.s.: If you don't want to provide a file just assign a non existent path (e.g., '-')
-    #       If you assign an empty string (i.e., '') then a user input might be required
-
-    # Cutsite list file path, required columns: |chr|pos|
-    cutsitelist='/media/gire/Data/BiCro-Resources/hg19.HindIII.txt'
-
-    # Maskfile path, required columns: |id|chr|start|end|
-    maskfile='/media/gire/Data/BiCro-Data/Sequencing/TK20/consensusBlacklist.centro.telo.chr5Peak.tsv'
-
-    # Chromosome lengths file path, required columns: |chr|len| (no header)
-    chrlengths='/media/gire/Data/BiCro-Resources/hg19.chr_size.txt'
-
-The `pat_files` instead, which is expected to be located in the `$DATA/BiCro-Data/Sequencing/$experiment` folder, contains a row per condition (as specified in the `settings.sh` file). Every row contains the following tab-separated information: condition label, scan_for_matches pattern, pattern length. An example being the following:
+The `pat_files`, which is expected to be located in the input folder, contains a row per condition (as specified in the `-c conditions` argument). Every row contains the following tab-separated information: condition label, scan_for_matches pattern, pattern length. An example being the following:
 
     neg ^ 8...8 CATCAGAA AAGCTT 1...1000 $  22
     1min    ^ 8...8 CATCATCC AAGCTT 1...1000 $  22
@@ -401,31 +366,28 @@ The output text files contains the following columns:
 This R script is run by `main` in step 7, and performs the cutsite binning. The output is a `cs_per_bin.bsize.bstep.RData` file containing the binned cutsite.
 
 ```
-usage:  cs_bin.R [--] [--help] [--opts OPTS] [--bin-size BIN-SIZE]
-        [--bin-step BIN-STEP] [--num-proc NUM-PROC] [--suffix SUFFIX]
-        dirpath cutsites chrlengths
+usage:  cs_bin.R [--help][-i BIN-SIZE][-t BIN-STEP]
+        [-c NUM-PROC][-s SUFFIX] dirpath cutsites chrlengths
 
 Bin cutsites.
 
 positional arguments:
-  dirpath           Directory to which the binned cutsites will be saved.
-  cutsites          File containing the cutsite positions. (chr | pos)
-  chrlengths        File containing the chromosome lengths. (chr | len)
+  dirpath                     Directory to which the binned cutsites will be saved.
+  cutsites                    File containing the cutsite positions. (chr | pos)
+  chrlengths                  File containing the chromosome lengths. (chr | len)
 
 flags:
-  -h, --help        show this help message and exit
+  -h, --help                  show this help message and exit
 
 optional arguments:
-  -x, --opts OPTS           RDS file containing argument values
-  -i, --bin-size BIN-SIZE   Bin size in bp.
-                            [default: 1e+06]
-  -t, --bin-step BIN-STEP   Distance between the starting point
-                            of consecutive bins in bp.
-                            [default: 1e+05]
-  -c, --num-proc NUM-PROC   Number of cores for parallel computation.
-                            [default: 1]
-  -s, --suffix SUFFIX       Suffix to be added to output files.
-                            [default: '']
+  -i, --bin-size BIN-SIZE     Bin size in bp.
+                              [default: 1e+06]
+  -t, --bin-step BIN-STEP     Distance between the starting point of consecutive bins in bp.
+                              [default: 1e+05]
+  -c, --num-proc NUM-PROC     Number of cores for parallel computation.
+                              [default: 1]
+  -s, --suffix SUFFIX         Suffix to be added to output files.
+                              [default: ]
 ```
 
 ### ./umi_bin.R
@@ -433,33 +395,31 @@ optional arguments:
 This R script is run by `main` in step 7, and performs the UMI binning. The output is a `experiment.umi_table.bsize.bstep.RData` file containing the binned cutsite. Also, a `experiment.condition.umi_table.bsize.bstep.tsv` file is saved in every condition folder.
 
 ```
-usage:  umi_bin.R [--] [--help] [--opts OPTS] [--bin-size BIN-SIZE]
-        [--bin-step BIN-STEP] [--num-proc NUM-PROC] [--suffix SUFFIX]
-        dirpath experiment conditions cutsites chrlengths
+usage:  umi_bin.R [-h][-c][-i BIN-SIZE][-t BIN-STEP][-p NUM-PROC]
+        [-s SUFFIX] dirpath experiment conditions chrlengths
 
 Bin UMIs.
 
 positional arguments:
-  dirpath           Experiment main directory,
-                    contains binned cutsites if available.
-  experiment        Experiment ID (e.g., TK26).
-  conditions        Comma-separated conditions (e.g., 400U2h,200U1h).
-  cutsites          File containing the cutsite positions. (chr | pos)
-  chrlengths        File containing the chromosome lengths. (chr | len)
+  dirpath         Experiment main directory, contains binned cutsites if available.
+  experiment      Experiment ID (e.g., TK26).
+  conditions      Comma-separated conditions (e.g., 400U2h,200U1h).
+  chrlengths      File containing the chromosome lengths. (chr | len)
 
 flags:
-  -h, --help        show this help message and exit
+  -h, --help           show this help message and exit
+  -c, --cutsites       Whether cutsites where used.
 
 optional arguments:
-  -x, --opts OPTS           RDS file containing argument values
-  -i, --bin-size BIN-SIZE   Bin size in bp. [default: 1e+06]
-  -t, --bin-step BIN-STEP   Distance between the starting point
-                            of consecutive bins in bp.
-                            [default: 1e+05]
-  -c, --num-proc NUM-PROC   Number of cores for parallel computation.
-                            [default: 1]
-  -s, --suffix SUFFIX       Suffix to be added to output files.
-                            [default: '']
+  -i, --bin-size BIN-SIZE     Bin size in bp.
+                              [default: 1e+06]
+  -t, --bin-step BIN-STEP     Distance between the starting point of consecutive bins in bp.
+                              [default: 1e+05]
+  -p, --num-proc NUM-PROC     Number of cores for parallel computation.
+                              [default: 1]
+  -s, --suffix SUFFIX         Suffix to be added to output files.
+                              [default: ]
+
 ```
 
 ### ./umi_plot.R
