@@ -11,7 +11,6 @@
 
 
 
-
 # ENV VAR ======================================================================
 
 export LC_ALL=C
@@ -20,7 +19,7 @@ export LC_ALL=C
 
 # Help string
 helps="
- usage: ./reads_trim.sh [-h][-t threads] -o outDir -c cond -p patFile
+ usage: ./reads_trim.sh [-h] -o outDir -c cond -p patFile
 
  Description:
   Trim linker from reads.
@@ -32,25 +31,14 @@ helps="
 
  Optional arguments:
   -h		Show this help page.
-  -t threads	Number of threads for parallelization.
 "
 
-# Default values
-threads=1
-
 # Parse options
-while getopts ht:o:c:p: opt; do
+while getopts ho:c:p: opt; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
 			exit 1
-		;;
-		t)
-			if [ 0 -ge "$OPTARG" ]; then
-				echo -e "Enforcing a minimum of 1 thread.\n"
-			else
-				threads=$OPTARG
-			fi
 		;;
 		o)
 			out_dir=$OPTARG
@@ -105,25 +93,44 @@ echo -e " · Trimming the first $length bases (pattern file)."
 
 # Remove first $length bases/cigar-chars from R1 FASTA file
 echo -e " >>> Trimming R1 FASTA file..."
-echo "s/^[ACTG]\{$length\}//" | \
-	sed -f - $out_dir/"$condition"/filtered.r1.fa \
+sed -r "s/^[ACTGN]{$length}//" $out_dir/"$condition"/filtered.r1.fa \
 	> $out_dir/"$condition"/filtered.r1.noLinker.fa
+
+# Generate temporary oneline fastq file
+cat $out_dir/"$condition"/filtered.r1.fq | paste - - - - \
+	> $out_dir/"$condition"/filtered.r1.oneline.fq
 
 # Remove first $length bases/cigar-chars from R1 FASTQ file
 echo -e " >>> Trimming R1 FASTQ file..."
-seed="s/^\(.*\)\t\(.\{$length\}\)\(.*\)\t\(.*\)\t\(.\{$length\}\)"
-seed="$seed\(.*\)$/\1\t\3\t\4\t\6/"
-cat $out_dir/"$condition"/filtered.r1.fq | paste - - - - | sed $seed - | \
-	tr '\t' '\n' > $out_dir/"$condition"/filtered.r1.noLinker.fq
+
+cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 1 \
+	> $out_dir/"$condition"/tmpbase
+
+cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 2 | \
+	sed -r "s/^(.{$length})(.*)\$/\2\t+/" - | \
+	paste $out_dir/"$condition"/tmpbase - > $out_dir/"$condition"/tmp
+
+cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 4 | \
+	sed -r "s/^(.{$length})(.*)\$/\2/" - | \
+	paste $out_dir/"$condition"/tmp - | tr "\t" "\n" \
+	> $out_dir/"$condition"/filtered.r1.noLinker.fq
 
 # Retain only the first $length bases/cigar-chars from R1 FASTQ file
 echo -e " >>> Saving linkers..."
-seed="s/^\@\(.*\)\t\(.\{$length\}\)\(.*\)\t\(.*\)\t\(.\{$length\}"
-seed="$seed\)\(.*\)$/\1\t\2\t\5/"
-cat $out_dir/"$condition"/filtered.r1.fq | paste - - - - | \
-	sed $seed - | sort --parallel=$threads \
-	--temporary-directory=$HOME/tmp -k1,1 \
-	> $out_dir/"$condition"/filtered.r1.linkers.oneline.fq
+
+cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 2 | \
+	sed -r "s/^(.{$length})(.*)\$/\1\t+/" - | \
+	paste $out_dir/"$condition"/tmpbase - > $out_dir/"$condition"/tmp
+
+cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 4 | \
+	sed -r "s/^(.{$length})(.*)\$/\1/" - | \
+	paste $out_dir/"$condition"/tmp - | tr "\t" "\n" \
+	> $out_dir/"$condition"/filtered.r1.linkers.fq
+
+rm $out_dir/"$condition"/tmp*
+
+# Remove temporary oneline fastq file
+rm $out_dir/"$condition"/filtered.r1.oneline.fq
 
 echo -e " · Trimmed."
 
