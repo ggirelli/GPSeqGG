@@ -14,7 +14,11 @@
 # DEPENDENCIES =================================================================
 
 library(argparser)
-source('umi_plot.functions.R')
+
+# Load local library
+init_opt <- commandArgs(trailingOnly = FALSE)
+local_dir <- dirname(sub("--file=", "", init_opt[grep("--file=", init_opt)]))
+source(paste0(local_dir, '/umi_plot.functions.R'))
 
 # INPUT ========================================================================
 

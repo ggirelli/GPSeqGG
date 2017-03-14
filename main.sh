@@ -20,10 +20,11 @@ export LC_ALL=C
 # DEPENDENCIES =================================================================
 
 # Script folder
-scriptdir="`dirname ${BASH_SOURCE}`/"
+scriptdir="`dirname ${BASH_SOURCE}`/scripts/"
+moddir="`dirname ${BASH_SOURCE}`/modules/"
 
 # Load functions
-source $scriptdir/main.functions.sh
+source $moddir/main.functions.sh
 
 # CHECK OPTIONS ================================================================
 
