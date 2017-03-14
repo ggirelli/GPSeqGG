@@ -19,7 +19,7 @@ export LC_ALL=C
 
 # DEPENDENCIES =================================================================
 
-# Script folder
+# Code folder
 scriptdir="`dirname ${BASH_SOURCE}`/scripts/"
 moddir="`dirname ${BASH_SOURCE}`/modules/"
 

@@ -80,7 +80,7 @@ function alignment() {
 		t[10]=$2 "\t" t[10];
 		t[11]=$4 "\t" t[11];
 
-		print join(t, 1, length(t), OFS) }'
+		print join(t, 1, length(t)-1, OFS) }'
 		awk "$awkprogram" \
 			<(cat "$cout/$condition/$condition.sam" | \
 				grep -v "^\@" | tr -s ' ') \
