@@ -124,8 +124,8 @@ cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 2 | \
 
 cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 4 | \
 	sed -r "s/^(.{$length})(.*)\$/\1/" - | \
-	paste $out_dir/"$condition"/tmp - | tr "\t" "\n" \
-	> $out_dir/"$condition"/filtered.r1.linkers.fq
+	paste $out_dir/"$condition"/tmp - \
+	> $out_dir/"$condition"/filtered.r1.linkers.oneline.fq
 
 rm $out_dir/"$condition"/tmp*
 
