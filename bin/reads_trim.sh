@@ -83,6 +83,9 @@ if [ ! -d "$out_dir/$condition/" ]; then
 	exit 1
 fi
 
+# Shortcuts
+d="$out_dir/$condition/"
+
 # RUN ==========================================================================
 
 # Select non-genomic region length
@@ -91,46 +94,37 @@ echo -e " · Trimming the first $length bases (pattern file)."
 
 # TRIM -----------------------------------------------------------------
 
-# Remove first $length bases/cigar-chars from R1 FASTA file
-echo -e " >>> Trimming R1 FASTA file..."
-sed -r "s/^[ACTGN]{$length}//" $out_dir/"$condition"/filtered.r1.fa \
-	> $out_dir/"$condition"/filtered.r1.noLinker.fa
-
 # Generate temporary oneline fastq file
-cat $out_dir/"$condition"/filtered.r1.fq | paste - - - - \
-	> $out_dir/"$condition"/filtered.r1.oneline.fq
+echo -e " >>> Generate temporary oneline FASTQ file..."
+cat $d/filtered.r1.fq | paste - - - - \
+	> $d/filtered.r1.oneline.fq
 
 # Remove first $length bases/cigar-chars from R1 FASTQ file
-echo -e " >>> Trimming R1 FASTQ file..."
+echo -e " >>> Trimming R1 FASTQ/FASTA files & saving linkers..."
 
-cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 1 \
-	> $out_dir/"$condition"/tmpbase
+# Setup AWK trimming program
+awkcommand='{
+print $1 "\t" substr($2, 0, len) "\t" $3 "\t" substr($4, 0, len) > o1;
+print $1 "\t" substr($2, len+1) "\t" $3 "\t" substr($4, len+1) > o2;
+print $1 "\t" substr($2, len+1) > o3;
+}'
 
-cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 2 | \
-	sed -r "s/^(.{$length})(.*)\$/\2\t+/" - | \
-	paste $out_dir/"$condition"/tmpbase - > $out_dir/"$condition"/tmp
+# Run AWK
+awk -v len=$length \
+	-v o1="$d/filtered.r1.linkers.oneline.fq" \
+	-v o2="$d/filtered.r1.noLinker.oneline.fq" \
+	-v o3="$d/filtered.r1.noLinker.oneline.fa" \
+	"$awkcommand" $d/filtered.r1.oneline.fq
 
-cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 4 | \
-	sed -r "s/^(.{$length})(.*)\$/\2/" - | \
-	paste $out_dir/"$condition"/tmp - | tr "\t" "\n" \
-	> $out_dir/"$condition"/filtered.r1.noLinker.fq
+# Split lines
+cat $d/filtered.r1.noLinker.oneline.fq | tr "\t" "\n" \
+	> $d/filtered.r1.noLinker.fq
+cat $d/filtered.r1.noLinker.oneline.fa | tr "\t" "\n" \
+	> $d/filtered.r1.noLinker.fa
 
-# Retain only the first $length bases/cigar-chars from R1 FASTQ file
-echo -e " >>> Saving linkers..."
-
-cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 2 | \
-	sed -r "s/^(.{$length})(.*)\$/\1\t+/" - | \
-	paste $out_dir/"$condition"/tmpbase - > $out_dir/"$condition"/tmp
-
-cat $out_dir/"$condition"/filtered.r1.oneline.fq | cut -f 4 | \
-	sed -r "s/^(.{$length})(.*)\$/\1/" - | \
-	paste $out_dir/"$condition"/tmp - \
-	> $out_dir/"$condition"/filtered.r1.linkers.oneline.fq
-
-rm $out_dir/"$condition"/tmp*
-
-# Remove temporary oneline fastq file
-rm $out_dir/"$condition"/filtered.r1.oneline.fq
+# Remove temporary oneline files
+rm $d/filtered.r1.noLinker.oneline.f*
+rm $d/filtered.r1.oneline.fq
 
 echo -e " · Trimmed."
 
