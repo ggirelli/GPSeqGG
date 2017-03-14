@@ -98,7 +98,7 @@ echo -e "Decompress tar.gz..."
 gunzip -c $r1 | cut -d ' ' -f 1 > $out_dir/r1.fq & pid0=$!
 
 # Decompress R2
-if [ -n $r2 ]; then
+if [ -n "$r2" ]; then
 	gunzip -c $r2 | cut -d ' ' -f 1 > $out_dir/r2.fq & pid4=$!
 fi
 
@@ -111,7 +111,7 @@ cat $out_dir/r1.fq | paste - - - - | cut -f 1,2 | sed 's/^@/>/' | tr "\t" "\n" |
 	cut -d ' ' -f 1 > $out_dir/r1.fa & pid1=$!
 
 # R2
-if [ -n $r2 ]; then
+if [ -n "$r2" ]; then
 	wait $pid4
 	cat $out_dir/r2.fq | paste - - - - | cut -f 1,2 | sed 's/^@/>/' | \
 		tr "\t" "\n" | cut -d ' ' -f 1 > $out_dir/r2.fa & pid5=$!
@@ -125,7 +125,7 @@ wait $pid1
 cat $out_dir/r1.fa | paste - - > $out_dir/r1oneline.fa & pid2=$!
 
 # R2
-if [ -n $r2 ]; then
+if [ -n "$r2" ]; then
 	wait $pid5
 	cat $out_dir/r2.fa | paste - - > $out_dir/r2oneline.fa & pid6=$!
 fi
@@ -141,7 +141,7 @@ cat $out_dir/r1.fq | tr ' ' '_' | paste - - - - | \
 wait $pid3
 
 # R2
-if [ -n $r2 ]; then
+if [ -n "$r2" ]; then
 	wait $pid6
 	cat $out_dir/r2.fq | tr ' ' '_' | paste - - - - | \
 	sort --parallel=$threads --temporary-directory=$HOME/tmp -k1,1 \
