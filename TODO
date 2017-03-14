@@ -2,5 +2,4 @@ TODO
 ===
 
 * Optimize memory usage for linkers addition to SAM file.
-	- Try inverting the order of the files and adjusting the awkprogramme accordingly.
 * Move different blocks from main.sh to modules folder.

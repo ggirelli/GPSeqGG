@@ -75,16 +75,17 @@ function alignment() {
 		awkprogram='@include "join";
 		FNR==NR{a[$1]=$0;next} ($1 in a) { OFS="\t";
 
-		split(a[$1], t, OFS);
+		split(a[$1], t1, OFS);
+		split($0, t2, OFS);
 
-		t[10]=$2 "\t" t[10];
-		t[11]=$4 "\t" t[11];
+		t2[10]=t1[2] "\t" t[10];
+		t2[11]=t1[4] "\t" t[11]
 
-		print join(t, 1, length(t)-1, OFS) }'
+		print join(t2, 1, length(t2)-1, OFS) }'
 		awk "$awkprogram" \
+			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
 			<(cat "$cout/$condition/$condition.sam" | \
 				grep -v "^\@" | tr -s ' ') \
-			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
 			> "$cout/$condition/$condition.linkers.sam"
 	done
 

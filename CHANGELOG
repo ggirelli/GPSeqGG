@@ -8,6 +8,8 @@ v0.1.1
 * Added auxillary intermediate data `aux` subfolder.
 * Added counts of reads filtered from SAM in the summary.
 * Optimized and fixed reads_trim.sh script.
+* Modularized main.sh script.
+* Moved scripts to separate folder.
 
 v0.1.0
 ===
