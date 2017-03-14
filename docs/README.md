@@ -4,8 +4,8 @@ Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis
 ## The `main` script
 
 ```
-usage: ./main.sh [-h][-y][-t threads] -i inDir -o outDir -e expID -c conditions
- [-n neg][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
+usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
+ [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
  [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
