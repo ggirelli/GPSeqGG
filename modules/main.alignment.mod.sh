@@ -14,7 +14,7 @@
 # START ========================================================================
 
 function alignment() {
-	echo -e 'Alignment\n=====================\n'
+	echo -e 'Alignment\n====================='
 
 	new_fields="\tmapped\tmapped/prefix\tproperly_paired"
 	new_fields="$new_fields\tproperly_paired/prefix\tinter_chr"
@@ -24,7 +24,7 @@ function alignment() {
 
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
-		echo -e "Aligning reads from condition '$condition'..."
+		echo -e "\nAligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
 		$scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
@@ -78,11 +78,10 @@ function alignment() {
 		split(a[$1], t1, OFS);
 		split($0, t2, OFS);
 
-		t2[10]=t1[2] "\t" t[10];
-		t2[11]=t1[4] "\t" t[11];
+		t2[10]=t1[2] "\t" t2[10];
+		t2[11]=t1[4] "\t" t2[11];
 
-
-		print join(t2, 1, 13, OFS) }'
+		print join(t2, 1, 11, OFS) }'
 		awk "$awkprogram" \
 			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
 			<(cat "$cout/$condition/$condition.sam" | \
