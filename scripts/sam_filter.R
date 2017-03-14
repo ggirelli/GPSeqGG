@@ -25,7 +25,7 @@ parser = arg_parser('Filter alignment output.', name = 'sam_filter.R')
 
 # Define mandatory arguments
 parser = add_argument(parser, arg = 'dirpath',
-	help = 'Experiment ccondition directory, contains UMI counts.')
+	help = 'Experiment condition directory, contains UMI counts.')
 parser = add_argument(parser, arg = 'experiment',
 	help = 'Experiment ID (e.g., TK26).')
 parser = add_argument(parser, arg = 'condition',
