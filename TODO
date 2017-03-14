@@ -1,2 +1,5 @@
 TODO
 ===
+
+* Optimize memory usage for linkers addition to SAM file.
+* Move different blocks from main.sh to modules folder.

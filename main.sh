@@ -41,8 +41,8 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
  Required files:
   Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
   input directory (inDir). The patterns file should have a condition per row
-  with condition name, pattern (scan_for_mateches format) and pattern length
-  separated by tabulations.
+  with condition name, pattern (scan_for_mateches format) and non-genomic
+  portion length separated by tabulations.
 
  Mandatory arguments:
   -i indir	Input directory.
@@ -61,7 +61,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
   -g refGenome	Path to reference genome file. Default: 'hg19'.
   -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
   -f cutsite	Cutsite sequence. Default: 'AAGCTT' (HindIII).
-  -q mapqThr	Mapping quality threshold. Default: 30.
+  -q mapqThr	Mapping quality threshold. Default: 1.
   -p platform	Sequencing platform. Default: 'L'.
   -u umilength	UMI sequence length. Default: 8.
   -r csRange	Range around cutsite for UMI assignment. Default: 40.
@@ -145,14 +145,8 @@ while getopts hwt:i:o:e:c:ng:a:d:xyf:q:p:u:r:z:b:j:k:l:m:s: opt; do
 			neg='neg'
 		;;
 		g)
-			# File with cutsite list
-			if [ -e $OPTARG ]; then
-				refGenome=$OPTARG
-			else
-				msg="Invalid -g option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n!!! $msg"
-				exi 1
-			fi
+			# Reference genome
+			refGenome=$OPTARG
 		;;
 		a)
 			# Aligner
@@ -466,7 +460,7 @@ function alignment() {
 
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
-		echo -e "Aligning reads from condition '$condition'..."
+		# echo -e "Aligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
 		$scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
@@ -513,12 +507,21 @@ function alignment() {
 
 		# Add back the UMIs to the SAM file ------------------------------------
 		echo -e " · Adding linkers to SAM file ..."
-		grep -v "^\@" $cout/"$condition"/"$condition".sam | tr -s ' ' | \
-			tr '\t' ' ' | sort --parallel=$threads \
-			--temporary-directory=$HOME/tmp -k1,1 | \
-			join - $cout/"$condition"/filtered.r1.linkers.oneline.fq \
-			-j 1 -o 0,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.2,1.10,2.3,1.11 \
-			> $cout/"$condition"/"$condition".linkers.sam
+
+		awkprogram='@include "join";
+		FNR==NR{a[$1]=$0;next} ($1 in a) { OFS="\t";
+
+		split(a[$1], t, OFS);
+
+		t[10]=$2 "\t" t[10];
+		t[11]=$4 "\t" t[11];
+
+		print join(t, 1, length(t), OFS) }'
+		awk "$awkprogram" \
+			<(cat "$cout/$condition/$condition.sam" | \
+				grep -v "^\@" | tr -s ' ') \
+			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
+			> "$cout/$condition/$condition.linkers.sam"
 	done
 
 	cp $outcontrol/summary_align $out/summary

@@ -35,7 +35,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
   -g refGenome  Path to reference genome file. Default: 'hg19'.
   -d bwaIndex   Path to BWA index file. Required if BWA is the selected aligner.
   -f cutsite    Cutsite sequence. Default: 'AAGCTT' (HindIII).
-  -q mapqThr    Mapping quality threshold. Default: 30.
+  -q mapqThr    Mapping quality threshold. Default: 1.
   -p platform   Sequencing platform. Default: 'L'.
   -u umilength  UMI sequence length. Default: 8.
   -r csRange    Range around cutsite for UMI assignment. Default: 40.
