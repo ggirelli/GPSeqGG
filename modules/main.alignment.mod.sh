@@ -24,7 +24,7 @@ function alignment() {
 
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
-		# echo -e "Aligning reads from condition '$condition'..."
+		echo -e "Aligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
 		$scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
