@@ -104,9 +104,9 @@ echo -e " >>> Trimming R1 FASTQ/FASTA files & saving linkers..."
 
 # Setup AWK trimming program
 awkcommand='{
-print $1 "\t" substr($2, 0, len) "\t" $3 "\t" substr($4, 0, len) > o1;
-print $1 "\t" substr($2, len+1) "\t" $3 "\t" substr($4, len+1) > o2;
-print $1 "\t" substr($2, len+1) > o3;
+print substr($1,2) "\t" substr($2,0,len) "\t" $3 "\t" substr($4,0,len) > o1;
+print $1 "\t" substr($2,len+1) "\t" $3 "\t" substr($4,len+1) > o2;
+print $1 "\t" substr($2,len+1) > o3;
 }'
 
 # Run AWK
