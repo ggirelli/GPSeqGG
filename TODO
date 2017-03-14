@@ -1,8 +1,8 @@
 TODO
 ===
 
+* Optimize UMI deduplication memory usage.
+* Log the UMI preparation step.
 * Optimize memory usage for linkers addition to SAM file.
-* Move different blocks from main.sh to modules folder.
 * Save command line to re-run with the same settings.
 * Filter X/Y chromosomes during SAM filter step if -x/-y options are used.
-* Log the UMI preparation step.

@@ -27,16 +27,16 @@ function alignment() {
 		echo -e "\nAligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
-		$scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
+		time $scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
 		if [ $numb_of_files -eq 2 ]; then
 			# Paired-end
-			$scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
+			time $scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
 				-c "$condition" -p -r $refGenome -a $aligner
 		else
 			# Single-end
-			$scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
+			time $scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
 				-c "$condition" -r $refGenome -a $aligner
 		fi
 

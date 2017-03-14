@@ -33,18 +33,18 @@ function prepare_umi() {
 
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n $maskFile ]]; then
-			$scriptdir/umi_group.py $cout/$condition/ $expID $condition \
+			time $scriptdir/umi_group.py $cout/$condition/ $expID $condition \
 				$umiLength --mask-file $maskFile & pid0=$!
 			wait $pid0
 		else
-			$scriptdir/umi_group.py $cout/$condition/ $expID $condition \
+			time $scriptdir/umi_group.py $cout/$condition/ $expID $condition \
 				$umiLength & pid0=$!
 			wait $pid0
 		fi
 
 		if [[ -n $csList ]]; then
 			# Assign UMIs to cutsites ------------------------------------------
-			$scriptdir/pos2cutsites.R $cout/$condition/ $expID $condition \
+			time $scriptdir/pos2cutsites.R $cout/$condition/ $expID $condition \
 				$csList -i $csRange -c $threads & pid0=$!
 			wait $pid0
 		fi
@@ -52,7 +52,7 @@ function prepare_umi() {
 		if [[ $umiLength -ne 0 ]]; then
 			# Deduplicating UMIs -----------------------------------------------
 			echo -e "\nDeduplicating UMIs ..."
-			$scriptdir/umi_dedupl.R $cout/$condition/ $expID $condition \
+			time $scriptdir/umi_dedupl.R $cout/$condition/ $expID $condition \
 				-p $platform -co $pthr -c $threads -cs $cslbool \
 				-em $emax -ep $eperc & pid0=$!
 			wait $pid0
