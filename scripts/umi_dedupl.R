@@ -429,7 +429,7 @@ deltan = unlist(mclapply(strsplit(uniqued_seq, ' ', fixed = T),
 # Log
 cat(paste0(' >>> ', round(sum(n - deltan) / sum(n) * 100, 2),
 	'% UMIs identified as duplicates and removed.\n'))
-cat(paste0(' >>> Remaning UMIs: ', sum(deltan), '\n'))
+cat(paste0(' >>> Remaining UMIs: ', sum(deltan), '\n'))
 
 # Unique UMI list --------------------------------------------------------------
 
@@ -440,7 +440,7 @@ uu = data.frame(
 	stringsAsFactors = F
 )
 
-cat(' · Saving uniqued UMI list ...\n')
+cat(' · Saving de-duplicated UMI list ...\n')
 fname <- 'UMIpos.unique'
 if ( 1 == cutsites ) fname <- paste0(fname, '.atcs')
 write.table(as.matrix(uu), paste0(dirpath, fname, suffix, '.txt'),
