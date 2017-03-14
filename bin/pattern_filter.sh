@@ -113,7 +113,8 @@ cat $out_dir/filtered.r1.fa | grep '>' | tr '>' '@' | \
 wait $pid4
 
 # Filter R2 if present
-if [[ 0 -lt `ls $in_dir/*r2* | wc -l` ]]; then
+nr2=`find $in_dir -maxdepth 1 -type f -iname "*r2*" | wc -l`
+if [[ 0 -lt "$nr2" ]]; then
 
 	echo "Filtering R2 reads based on patterns ..."
 	cat $out_dir/filtered.r1.fa | grep '>' | cut -d ':' -f -7 | \
