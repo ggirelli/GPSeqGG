@@ -79,7 +79,7 @@ binstring <- paste0('.bsize', bin_size, '.bstep', bin_step)
 # File input -------------------------------------------------------------------
 
 # Load UMItable
-l <- load(paste0(dirpath, '/aux/',
+l <- load(paste0(dirpath, 'aux/',
 	experiment, '.umi_table', binstring, '.RData'))
 
 # Get list of present chromosomes
@@ -103,7 +103,7 @@ chr_list <- chr_list[order(chr_id_list)]
 
 # Negative condition id
 if ( !exists('neg') ) neg = ''
-neg_id = which(neg == names(l))
+neg_id = which(neg == names(umi_tab))
 neg_id = ifelse(0 == length(neg_id), 0, neg_id)
 
 # Read maskfile
