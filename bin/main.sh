@@ -353,13 +353,13 @@ xout=$outdir/aux && mkdir -p $xout
 
 # Additional outputs
 outcontrol=$outdir/tmp && mkdir -p $outcontrol
-logpath="$out/log"
+logpath="$out/$expID.log"
 
 # START LOG ====================================================================
+clear
 {
 
 # Start
-clear
 echo -e "$settings
 START\n=====================\n"
 
@@ -367,6 +367,12 @@ START\n=====================\n"
 
 find $indir -maxdepth 1 -type f -iname "*$expID*R[12]*" | sort > filelist
 numb_of_files=`cat filelist | wc -l`
+
+if [ 0 -eq $numb_of_files ]; then
+	echo -e "!!! ERROR. No R1/R2 files found for $expID.\n"
+	exit 1
+fi
+
 r1=`cat filelist | head -n1`
 echo "R1 is " $r1
 if [ $numb_of_files -eq 2 ]; then
@@ -381,7 +387,11 @@ rm filelist
 function quality_control() {
 	echo -e 'Quality control\n=====================\n'
 	# Produce quality control summarie(s)
-	time $scriptdir/quality_control.sh -t $threads -o $xout -1 $r1 -2 $r2
+	if [ -z "$r2" ]; then
+		time $scriptdir/quality_control.sh -t $threads -o $xout -1 $r1
+	else
+		time $scriptdir/quality_control.sh -t $threads -o $xout -1 $r1 -2 $r2
+	fi
 }
 execute_step $dontask 'quality control' quality_control
 
@@ -389,7 +399,11 @@ execute_step $dontask 'quality control' quality_control
 function file_generation() {
 	echo -e 'File generation\n=====================\n'
 	# Generate necessary files
-	time $scriptdir/files_prepare.sh -t $threads -o $in -1 $r1 -2 $r2
+	if [ -z "$r2" ]; then
+		time $scriptdir/files_prepare.sh -t $threads -o $in -1 $r1
+	else
+		time $scriptdir/files_prepare.sh -t $threads -o $in -1 $r1 -2 $r2
+	fi
 }
 execute_step $dontask 'file generation' file_generation
 
@@ -398,7 +412,7 @@ function pattern_filtering() {
 	echo -e 'Pattern filtering\n=====================\n'
 
 	# Count total reads
-	echo -e "\nCounting total reads..."
+	echo -e "Counting total reads..."
 	total_read_count=`wc -l $in/r1oneline.fa | cut -d " " -f 1`
 	header="condition\tpattern\ttotal_read_count\treads_with_prefix"
 	header="$header\tprefix/total"
@@ -427,7 +441,6 @@ function pattern_filtering() {
 		count=`cat $cout/"$condition"/filtered.r1.fa | paste - - | wc -l`
 
 		convstr="scale=4;perc=$count/$total_read_count;scale=2;(perc*100)/1"
-		echo $constr
 		perc=`echo $convstr | bc`
 
 		echo -e $header > $cout/"$condition"/summary
@@ -436,6 +449,7 @@ function pattern_filtering() {
 		echo -e $header >> $out/summary
 	done
 
+	cp $out/summary $outcontrol/summary_pattern
 }
 execute_step $dontask 'pattern_filtering' pattern_filtering
 
@@ -443,17 +457,18 @@ execute_step $dontask 'pattern_filtering' pattern_filtering
 function alignment() {
 	echo -e 'Alignment\n=====================\n'
 
-	header=`head -n 1 $out/summary`
-	echo -e "$header\tmapped/prefix\tproperly_paired\tinter_chr" \
-		> $outcontrol/summarytmp
+	new_fields="\tmapped\tmapped/prefix\tproperly_paired"
+	new_fields="$new_fields\tproperly_paired/prefix\tinter_chr"
+	head -n 1 $outcontrol/summary_pattern | \
+		awk -v nf="$new_fields" "{ print \$0 nf }" - \
+		> $outcontrol/summary_align
 
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
-		echo -e "\nAligning reads from condition '$condition'..."
+		echo -e "Aligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
-		$scriptdir/reads_trim.sh \
-			-t $threads -o $cout -c "$condition" -p $patfiles
+		$scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
 		if [ $numb_of_files -eq 2 ]; then
@@ -471,20 +486,29 @@ function alignment() {
 		samtools flagstat $cout/"$condition"/"$condition".sorted.bam \
 			> $cout/"$condition"/"$condition".bam_notes.txt
 
+		# Mapped reads
 		count=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'mapped' | head -n 1 | cut -d ' ' -f 1`
 		perc=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'mapped' | head -n 1 | cut -d '(' -f 2 | cut -d ':' -f 1`
+
+		# Properly paired reads
 		count2=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'properly paired' | head -n 1 | cut -d ' ' -f 1`
 		perc2=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'properly paired' | head -n 1 | cut -d '(' -f 2 | \
 			cut -d ':' -f 1`
-		chim=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
+		
+		# Chimeric reads	
+		count3=`cat $cout/"$condition"/"$condition".bam_notes.txt | \
 			grep 'with mate mapped to a different chr' | head -n 1 | \
 			cut -d ' ' -f 1`
-		row=`grep "$condition" "$out/summary"`
-		echo -e "$row\t$perc\t$perc2\t$chim" >> $outcontrol/summarytmp
+
+		# Add to summary
+		new_fields="\t$count\t$perc\t$count2\t$perc2\t$count3"
+		grep "$condition" "$outcontrol/summary_pattern" | \
+			awk -v nf="$new_fields" "{ print \$0 nf }" - \
+			>> $outcontrol/summary_align
 
 		# Add back the UMIs to the SAM file ------------------------------------
 		echo -e " · Adding linkers to SAM file ..."
@@ -496,8 +520,7 @@ function alignment() {
 			> $cout/"$condition"/"$condition".linkers.sam
 	done
 
-	cp $out/summary $outcontrol/summary_pre_align
-	mv $outcontrol/summarytmp $out/summary
+	cp $outcontrol/summary_align $out/summary
 
 }
 execute_step $dontask 'alignment' alignment

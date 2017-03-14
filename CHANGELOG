@@ -7,6 +7,7 @@ v0.1.1
 * Moved output plots into `plots` subfolder.
 * Added auxillary intermediate data `aux` subfolder.
 * Added counts of reads filtered from SAM in the summary.
+* Optimized and fixed reads_trim.sh script.
 
 v0.1.0
 ===
