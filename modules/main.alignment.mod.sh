@@ -79,9 +79,10 @@ function alignment() {
 		split($0, t2, OFS);
 
 		t2[10]=t1[2] "\t" t[10];
-		t2[11]=t1[4] "\t" t[11]
+		t2[11]=t1[4] "\t" t[11];
 
-		print join(t2, 1, length(t2)-1, OFS) }'
+
+		print join(t2, 1, 13, OFS) }'
 		awk "$awkprogram" \
 			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
 			<(cat "$cout/$condition/$condition.sam" | \

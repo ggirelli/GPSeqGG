@@ -62,7 +62,7 @@ setwd(dirpath)
 
 cat(paste0('\nFiltering SAM file:\n'))
 cat(paste0(' · Collecting aligned reads.\n'))
-t <- read_delim(paste0(condition, '.linkers.sam'), ' ',
+t <- read_delim(paste0(condition, '.linkers.sam'), '\t',
 	col_names = c('qname', 'flag', 'chr', 'pos', 'mapq', 'cigar', 'rnext',
 		'pnext', 'tlen', 'lseq', 'seq', 'lqual', 'qual'),
 	col_types = 'ciciicciicccc')
