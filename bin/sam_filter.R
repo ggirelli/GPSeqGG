@@ -51,6 +51,9 @@ p = parse_args(parser)
 # Attach argument values to variables
 attach(p['' != names(p)])
 
+# Output notes
+notes = ""
+
 # RUN ==========================================================================
 
 setwd(dirpath)
@@ -93,6 +96,7 @@ mt <- t[t$flag %in% uf[sec],]
 
 cat(paste0(' >>> Kept ', nrow(mt), ' rows out of ', nrow(t),
 	' (', round(nrow(mt) / nrow(t) * 100, 2), '%)\n'))
+notes = paste0(notes, nrow(t) - nrow(mt), " secondary alignments.\n")
 
 # Filter chimeras --------------------------------------------------------------
 
@@ -121,11 +125,14 @@ if ( 0 != length(which(1 == r2)) ) {
 
 		cat(paste0(' >>> Kept ', nrow(mt), ' rows out of ', old_nrow,
 			' (', round(nrow(mt) / old_nrow * 100, 2), '%)\n'))
+		notes = paste0(notes, old_nrow - nrow(mt), " chimeric reads.\n")
 	} else {
 		cat(paste0(' >>> No chimeras found.\n'))
+		notes = paste0(notes, 0, " chimeric reads.\n")
 	}
 } else {
 	cat(paste0(' >>> No R2 found, thus no chimeras.\n'))
+	notes = paste0(notes, 0, " chimeric reads.\n")
 }
 
 # Filter unmapped reads --------------------------------------------------------
@@ -137,6 +144,7 @@ mt <- mt[mt$chr %in% c(1:22, 'X', 'Y'),]
 
 cat(paste0(' >>> Kept ', nrow(mt), ' rows out of ', old_nrow,
 	' (', round(nrow(mt) / old_nrow * 100, 2), '%)\n'))
+notes = paste0(notes, old_nrow - nrow(mt), " unmapped reads.\n")
 
 # Filter R2s -------------------------------------------------------------------
 
@@ -157,8 +165,10 @@ if ( 0 != length(which(1 == r2)) ) {
 
 	cat(paste0(' >>> Kept ', nrow(mt), ' out of ', old_nrow,
 		' (', round(nrow(mt) / old_nrow * 100, 2), '%)\n'))
+	notes = paste0(notes, old_nrow - nrow(mt), " R2 reads.\n")
 } else {
 	cat(paste0(' >>> No R2 found...\n'))
+	notes = paste0(notes, 0, " R2 reads.\n")
 }
 
 # Filter MAPQ ------------------------------------------------------------------
@@ -171,10 +181,13 @@ mt <- mt[mt$mapq >= mapq_thr,]
 cat(paste0(' >>> MAPQ threshold [', mapq_thr, ']\n'))
 cat(paste0(' >>> Selected ', nrow(mt), ' out of ', old_nrow,
 	' (', round(nrow(mt) / old_nrow * 100, 2), '%)\n'))
+notes = paste0(notes, old_nrow - nrow(mt),
+	" reads with MAPQ < ", mapq_thr, ".\n")
 
 # Output 1 ---------------------------------------------------------------------
 
 cat(' · Writing output ...\n')
+notes = paste0(notes, nrow(mt), " reads left after filtering.\n")
 #write.table(mt, paste0(condition, '.filtered.sam'),
 #	row.names = F, col.names = F, quote = F, sep = '\t')
 save(mt, file = paste0(condition, '.filtered.sam.RData'))
@@ -223,6 +236,8 @@ move <- rbindlist(mclapply(unique(mt$cigar[mt$flag %in% rc]),
 ))
 cat(' · Average position correction for reverse strand alignments:',
 	round(mean(move$move, na.rm = T), 2), 'bp\n')
+notes = paste0(notes, round(mean(move$move, na.rm = T), 2),
+	" bp of average position correction for reverse strand alignments.\n")
 
 # Apply CIGAR-based shift
 mt$pos[mt$flag %in% rc] <- mt$pos[mt$flag %in% rc] + move$move[
@@ -237,6 +252,11 @@ cat(' · Writing output 3\' position ...\n')
 write.table(mt[, c('chr', 'pos', 'lseq', 'lqual', 'qname')],
 	paste0(condition, '.filtered.umi.pos.txt'),
 	row.names = F, col.names = F, quote = F, sep = '\t')
+
+# Save notes -------------------------------------------------------------------
+
+write.table(notes, paste0(condition, '.sam_filter_notes.txt'),
+	quote = F, col.names = F, row.names = F)
 
 # END --------------------------------------------------------------------------
 
