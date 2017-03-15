@@ -54,8 +54,8 @@ maskfile = args.mask_file[0]
 # UMI.pos file columns
 chr_col_id = 0
 pos_col_id = 1
-lseq_col_id = 4
-lqual_col_id = 5
+lseq_col_id = 3
+lqual_col_id = 4
 
 # RUN ==========================================================================
 
