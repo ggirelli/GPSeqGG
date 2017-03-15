@@ -54,8 +54,8 @@ maskfile = args.mask_file[0]
 # UMI.pos file columns
 chr_col_id = 0
 pos_col_id = 1
-lseq_col_id = 2
-lqual_col_id = 3
+lseq_col_id = 4
+lqual_col_id = 5
 
 # RUN ==========================================================================
 
@@ -67,7 +67,6 @@ fname = dirpath + condition + '.filtered.umi.pos.txt'
 f = open(fname, 'r+')
 reads = f.readlines()
 f.close()
-
 
 # Group UMIs per position ------------------------------------------------------
 print(' · Grouping UMIs per position ...')

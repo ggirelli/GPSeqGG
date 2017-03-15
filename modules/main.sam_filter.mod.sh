@@ -23,9 +23,25 @@ function filter_sam() {
 	for condition in "${condv[@]}"; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
+		# From https://goo.gl/MNXp5o
+		function join_by { local IFS="$1"; shift; echo "$*"; }
+
+		# Select chromosomes to remove
+		flags=()
+		if $rmX; then
+			flags+=('X')
+		fi
+		if $rmY; then
+			flags+=('Y')
+		fi
+		flags=`join_by , "${flags[@]}"`
+		if [ -n $flags ]; then
+			flags="-r $flags"
+		fi
+
 		# Filter SAM
 		time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
-			-mt $mapqThr -cs $cutsite -c $threads & pid0=$!
+			-mt $mapqThr -cs $cutsite -c $threads $flags & pid0=$!
 		wait $pid0
 
 	done

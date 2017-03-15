@@ -233,6 +233,8 @@ optional arguments:
                                 [default: 1]
   -s, --suffix SUFFIX           Suffix to be added to output files.
                                 [default: '']
+  -r, --rmChr RMCHR             Comma separated chromosomes to remove.
+                                [default: '']
 ```
 
 Specifically, the filters do the following:

@@ -4,4 +4,5 @@ TODO
 * Optimize UMI deduplication memory usage.
 * Log the UMI preparation step.
 * Optimize memory usage for linkers addition to SAM file.
-* Filter X/Y chromosomes during SAM filter step if -x/-y options are used.
+* Allow to remove any chromosomes, or instead specify which chromosomes to keep.
+* Move barcode sequence option to pat_files.

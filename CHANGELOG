@@ -10,6 +10,10 @@ v0.1.1
 * Optimized and fixed reads_trim.sh script.
 * Modularized main.sh script.
 * Moved scripts to separate folder.
+* Fixed rmX/rmY option report.
+* Command line saved in aux/CMD file.
+* Filter X/Y chromosomes during SAM filter step.
+* Keep MAPQ level in SAM filter output.
 
 v0.1.0
 ===

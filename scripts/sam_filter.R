@@ -13,10 +13,10 @@
 
 # DEPENDENCIES =================================================================
 
-library(argparser)
-library(data.table)
-library(parallel)
-library(readr)
+suppressMessages(library(argparser))
+suppressMessages(library(data.table))
+suppressMessages(library(parallel))
+suppressMessages(library(readr))
 
 # PARAMS =======================================================================
 
@@ -44,12 +44,18 @@ parser = add_argument(parser, arg = '--num-proc', short = '-c',
 parser = add_argument(parser, arg = '--suffix',
 	help = 'Suffix to be added to output files.',
 	default = '', nargs = 1)
+parser = add_argument(parser, arg = '--rmChr', short = '-r',
+	default = '', nargs = 1,
+	help = 'Comma separated chromosomes to remove.')
 
 # Parse arguments
 p = parse_args(parser)
 
 # Attach argument values to variables
 attach(p['' != names(p)])
+
+# Additional manipulations
+rmChr = unlist(strsplit(rmChr, ',', fixed = T))
 
 # Output notes
 notes = ""
@@ -184,6 +190,39 @@ cat(paste0(' >>> Selected ', nrow(mt), ' out of ', old_nrow,
 notes = paste0(notes, old_nrow - nrow(mt),
 	" reads with MAPQ < ", mapq_thr, ".\n")
 
+# Filtering chromosomes --------------------------------------------------------
+
+
+cat(paste0(' · Removing chromosomes...\n'))
+if ( 0 != length(rmChr) ) {
+
+	# Removed reads counter
+	nrm = 0
+
+	for (chr in rmChr) {
+		cat(paste0(' >>> Removing chr', chr, '...\n'))
+
+		# Current count of removed reads
+		cnrm = sum(chr == mt$chr)
+		cat(paste0(' >>> Removing ', cnrm, ' reads...\n'))
+
+		# Remove reads
+		if ( 0 != cnrm )
+			mt = mt[-which(chr == mt$chr),]
+
+		# Update general count
+		nrm = nrm + cnrm
+	}
+
+	notes=paste0(notes, paste0(nrm, ' reads from removed chromosomes (',
+		paste(paste0('chr', rmChr), collapse = ', '), ').\n'))
+} else {
+	cat(paste0(' >>> No chromosomes to be removed.\n'))
+	notes=paste0(notes, paste0(0, ' reads from removed chromosomes (',
+		paste(paste0('chr', rmChr), collapse = ', '), ').\n'))
+}
+
+
 # Output 1 ---------------------------------------------------------------------
 
 cat(' · Writing output ...\n')
@@ -249,7 +288,7 @@ mt$pos[!mt$flag %in% rc] <- mt$pos[!mt$flag %in% rc] - nchar(cutsite)
 # Output 2 ---------------------------------------------------------------------
 
 cat(' · Writing output 3\' position ...\n')
-write.table(mt[, c('chr', 'pos', 'lseq', 'lqual', 'qname')],
+write.table(mt[, c('chr', 'pos', 'mapq', 'lseq', 'lqual', 'qname')],
 	paste0(condition, '.filtered.umi.pos.txt'),
 	row.names = F, col.names = F, quote = F, sep = '\t')
 
