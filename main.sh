@@ -14,7 +14,6 @@
 
 
 # ENV VAR ======================================================================
-
 export LC_ALL=C
 
 # DEPENDENCIES =================================================================
@@ -48,6 +47,9 @@ xout=$outdir/aux && mkdir -p $xout
 # Additional outputs
 outcontrol=$outdir/tmp && mkdir -p $outcontrol
 logpath="$out/$expID.log"
+
+# Save command line
+echo "$0$*" > "$xout/CMD"
 
 # START LOG ====================================================================
 clear

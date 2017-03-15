@@ -300,7 +300,16 @@ settings="$settings
 
  Bin size: $binSize nt
  Bin step: $binStep nt
+
 "
+# Chromosome removal
+if $rmX; then
+	settings="$settings!!! Removing chrX after alignment.\n"
+fi
+if $rmY; then
+	settings="$settings!!! Removing chrY after alignment.\n"
+fi
+
 
 # Additional files
 if [ -n "$csList" ]; then
