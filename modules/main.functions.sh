@@ -20,13 +20,13 @@ function check_settings() {
 	msg="Please, double check the settings."
 	msg="$msg\nRun the analysis?\nYes (y), Abort (a)"
 	echo -e $msg
-	read -e ans
+	read -n 1 -e ans
 	
 	end=0
 	while [[ 0 -eq $end ]]; do
 		if [[ -z $ans ]]; then
 			echo -e $msg
-			read -e ans
+			read -n 1 -e ans
 		elif [[ 'a' == $ans ]]; then
 			end=1
 			echo "Aborted."
@@ -36,7 +36,7 @@ function check_settings() {
 			end=1
 		else
 			echo -e $msg
-			read -e ans
+			read -n 1 -e ans
 		fi
 	done
 }
