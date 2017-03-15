@@ -109,7 +109,7 @@ function prepare_umi() {
 
 			# Copy to main directory
 			cp "$cout/$condition/UMIpos.unique.atcs.bed" \
-				> "$out/$expID_$condition_GG__cutsiteLoc-umiCount.atcs.bed"
+				> "$out"/"$expID"_"$condition"_GG__cutsiteLoc-umiCount.atcs.bed
 		else
 			# Without cutsite assignment
 			awkprogram='
@@ -133,7 +133,7 @@ function prepare_umi() {
 
 			# Copy to main directory
 			cp "$cout/$condition/UMIpos.unique.bed" \
-				> "$out/$expID_$condition_GG__cutsiteLoc-umiCount.bed"
+				> "$out"/"$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed
 		fi
 
 		# Update summary -------------------------------------------------------
