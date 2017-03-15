@@ -14,6 +14,7 @@ v0.1.1
 * Command line saved in aux/CMD file.
 * Filter X/Y chromosomes during SAM filter step.
 * Keep MAPQ level in SAM filter output.
+* Log the SAM filter step.
 
 v0.1.0
 ===
