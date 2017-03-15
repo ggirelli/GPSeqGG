@@ -17,6 +17,7 @@ v0.1.1
 * Log the SAM filter step.
 * Optimized pos2cutsite script by calculating distance only from the 2 closest cutsite.
 * Log the UMI preparation step.
+* Produce properly formatted bed files per condition.
 
 v0.1.0
 ===

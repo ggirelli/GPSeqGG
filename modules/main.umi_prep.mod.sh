@@ -75,6 +75,67 @@ function prepare_umi() {
 			fi
 		fi
 
+		# Generate bed file ----------------------------------------------------
+
+		cslength=${#cutsite}
+		if [ -n $csList ]; then
+			# Obtain cutsites from list and compare with uniqued UMIs
+			awkprogram='
+			FNR==NR
+			{
+				FS=OFS="\t";
+				k=$1"~"$2;
+				a[k]=$0"\t"NR;
+				next
+			}
+
+			{
+				FS=OFS="\t";
+				k="chr"$1"~"$2;
+			}
+			(k in a){
+				split(a[k], cs, "\t");
+				split($0, umi, "\t");
+				n=split(umi[3], umis, " ");
+				{
+				FS=OFS="";
+				print cs[1],"\t",cs[2],"\t",cs[2]+cslen-1,"\tcs_",cs[3],"\t",n;
+				}
+			}'
+			awk -v cslen=$cslength "$awkprogram" \
+				<(cat "$csList") \
+				<(cat "$cout/$condition/UMIpos.unique.atcs.txt") \
+				> "$cout/$condition/UMIpos.unique.atcs.bed"
+
+			# Copy to main directory
+			cp "$cout/$condition/UMIpos.unique.atcs.bed" \
+				> "$out/$expID_$condition_GG__cutsiteLoc-umiCount.atcs.bed"
+		else
+			# Without cutsite assignment
+			awkprogram='
+			{
+				split($0, r, "\t");
+				n=split(r[3], u, " ");
+			}
+
+			23==r[1]{ r[1]="X" }
+			24==r[1]{ r[1]="Y" }
+
+			0!=n{
+				FS=OFS="";
+				r[1]="chr"r[1];
+				print r[1],"\t",r[2],"\t",r[2]+cslen-1,"\tloc_",NR,"\t",n
+			}
+			'
+			awk -v cslen=$cslength "$awkprogram" \
+				<(cat "$cout/$condition/UMIpos.unique.txt") \
+				> "$cout/$condition/UMIpos.unique.bed"
+
+			# Copy to main directory
+			cp "$cout/$condition/UMIpos.unique.bed" \
+				> "$out/$expID_$condition_GG__cutsiteLoc-umiCount.bed"
+		fi
+
 		# Update summary -------------------------------------------------------
 
 		# Input reads
