@@ -192,7 +192,6 @@ notes = paste0(notes, old_nrow - nrow(mt),
 
 # Filtering chromosomes --------------------------------------------------------
 
-
 cat(paste0(' · Removing chromosomes...\n'))
 if ( 0 != length(rmChr) ) {
 

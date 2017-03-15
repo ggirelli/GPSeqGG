@@ -88,6 +88,7 @@ function filter_sam() {
 			>> $outcontrol/summary_sam_filter
 	done
 
+	cp $outcontrol/summary_sam_filter $out/summary
 }
 
 ################################################################################
