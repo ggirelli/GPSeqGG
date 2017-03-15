@@ -280,6 +280,8 @@ cat(' · Counting UMIs ...\n')
 n = unlist(mclapply(strsplit(u$seq, ' ', fixed = T),
 	FUN = length, mc.cores = num_proc))
 
+log = paste0(sum(n), ' reads assigned to a cutsite.\n')
+
 # Build quality data.frame
 qabd = mk_qab_df(qab, qab_min)
 
@@ -391,6 +393,8 @@ rmq = uquals[which(pqs > ethr)]
 nqkept = length(which(! quals %in% rmq))
 cat(paste0(' >>> ', nqkept, '/', length(quals),
 	' (', round(nqkept/length(quals)*100, 2), '%) UMIs pass the filter.', '\n'))
+log = paste0(log, nqkept, ' reads pass the read quality filter (',
+	round(nqkept/length(quals)*100, 2), '%).\n')
 
 # Remove those that do not pass the threshold by checking from the overall index
 cat(' · Removing UMIs ...\n')
@@ -411,6 +415,13 @@ u = as.data.frame(rbindlist(mclapply(1:nrow(u),
 )), stringsAsFactors = F)
 cat(' >>> Removed.\n')
 
+# Recount UMIs
+n = unlist(lapply(u$seq,
+	FUN=function(x) {
+		length(unlist(strsplit(x, ' ', fixed = T)))
+	}
+))
+
 # Strict unique ----------------------------------------------------------------
 
 # Perform strict unique
@@ -427,8 +438,12 @@ deltan = unlist(mclapply(strsplit(uniqued_seq, ' ', fixed = T),
 	FUN = length, mc.cores = num_proc))
 
 # Log
-cat(paste0(' >>> ', round(sum(n - deltan) / sum(n) * 100, 2),
-	'% UMIs identified as duplicates and removed.\n'))
+cat(paste0(' >>> ', sum(n - deltan), ' (',
+	round(sum(n - deltan) / sum(n) * 100, 2),
+	'%) UMIs identified as duplicates and removed.\n'))
+log=paste0(log, sum(n - deltan), ' (',
+	round(sum(n - deltan) / sum(n) * 100, 2), '%) duplicated UMIs.\n',
+	sum(deltan), ' UMIs left after deduplication.\n')
 cat(paste0(' >>> Remaining UMIs: ', sum(deltan), '\n'))
 
 # Unique UMI list --------------------------------------------------------------
@@ -476,6 +491,12 @@ stripchart(deltan, vertical = T, add = T, method = 'j', pch = 20, cex = .5,
 
 # Save to file
 graphics.off()
+
+# Write log --------------------------------------------------------------------
+
+logfile = paste0(dirpath, condition, '.umi_prep_notes.txt')
+log = unlist(strsplit(log, '\n', fixed = T))
+write.table(log, logfile, row.names = F, col.names = F, quote = F, append = T)
 
 # END --------------------------------------------------------------------------
 

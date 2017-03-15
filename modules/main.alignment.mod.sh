@@ -16,6 +16,7 @@
 function alignment() {
 	echo -e 'Alignment\n====================='
 
+	# Update summary header
 	new_fields="\tmapped\tmapped/prefix\tproperly_paired"
 	new_fields="$new_fields\tproperly_paired/prefix\tinter_chr"
 	head -n 1 $outcontrol/summary_pattern | \

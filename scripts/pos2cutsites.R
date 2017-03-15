@@ -13,11 +13,11 @@
 
 # DEPENDENCIES =================================================================
 
-library(argparser)
-library(data.table)
-library(ggplot2)
-library(parallel)
-library(readr)
+suppressMessages(library(argparser))
+suppressMessages(library(data.table))
+suppressMessages(library(ggplot2))
+suppressMessages(library(parallel))
+suppressMessages(library(readr))
 
 # INPUT ========================================================================
 
@@ -79,39 +79,47 @@ cat(paste0(' · Range: +-', bin_size / 2, '\n'))
 
 # Associate positions to cutsites ----------------------------------------------
 cat(' · Associating locations to cutsites ...\n')
-bt <- rbindlist(lapply(split(umi, umi_num),
+btt <- mclapply(split(umi, umi_num),
 	FUN = function(t, cs, bs) {
 		chr <- t$chr[1]
 
 		# Select cutsites on the current chromosome
 		cs <- cs[cs$chr == chr,]
 
-		# Calculate distance from closest cutsite
-		ds <- unlist(mclapply(t$pos,
-			FUN = function(x, cs) { min(abs(x - cs)) }, cs$pos
-			, mc.cores = num_proc))
+		# Calculate distance from closest cutsite and identify it
+		ds <- rbindlist(mclapply(t$pos,
+			FUN = function(x, cs) {
+				csid = which(cs >= x)[1]
+				darr = c(cs[csid] - x, x - cs[min(1, csid - 1)])
+				if ( 2 == which.min(darr) ) csid = min(1, csid -1)
+				return(data.frame(d = min(darr), id = csid))
+			}, cs$pos
+			, mc.cores = 1
+		))
 
-		# Plot
-		# plot(ds, pch = 16, col = rgb(0, 0, 0, .3), cex = .5, log = 'y',
-		# 	xlab = 'Distance from closest cutsite [nt]', ylab = 'Occurrences',
-		# 	main = names(table(ds[ds != 0]))[which.max(table(ds[ds != 0]))])
-		# abline(h = 70)
-		# abline(h = 76, col=2)
+		# Count orphan locations
+		n_locs = length(ds$d)
+		n_orphs_loc = length(which(ds$d > bs/2))
 
-		# Identify closest cutsite
-		dsid <- unlist(mclapply(t$pos,
-			FUN = function(x, cs) { which.min(abs(x - cs)) }, cs$pos
-			, mc.cores = num_proc))
+		# Count orphan reads
+		n_reads = sum(unlist(mclapply(t$seq,
+			FUN = function(x) { length(unlist(strsplit(x, ' ', fixed = T))) }
+			, mc.cores = 1)))
+		n_orphs = sum(unlist(mclapply(t$seq[which(ds$d > bs/2)],
+			FUN = function(x) { length(unlist(strsplit(x, ' ', fixed = T))) }
+			, mc.cores = 1)))
 
 		# Log orphan reads percentage
-		cat(paste0(' >>> ',
-			chr, ': ', length(which(ds > bs/2)), '/', length(ds),
-			' (', round(length(which(ds > bs/2)) / length(ds) *100, 2),
-			'%) orphan reads found.\n'))
+		cat(paste0(' >>> ', chr, ': ', n_orphs_loc, '/', n_locs,
+			' (', round(n_orphs_loc / n_locs *100, 2),
+			'%) orphan locations found.\n'))
+		cat(paste0('     ', paste(rep(' ', nchar(chr)), collapse = ''), '  ',
+			n_orphs, '/', n_reads,
+			' (', round(n_orphs / n_reads *100, 2), '%) orphan reads found.\n'))
 
 		# Save assignment and remove orphan reads
-		t$mind <- dsid
-		torm <- which(ds > bs / 2)
+		t$mind <- ds$id
+		torm <- which(ds$d > bs / 2)
 		if ( 0 != length(torm) ) t <- t[-torm,]
 
 		# Move the UMIs together at the cutsite position
@@ -126,14 +134,48 @@ bt <- rbindlist(lapply(split(umi, umi_num),
 					stringsAsFactors = F
 				)
 			}, cs
-			, mc.cores = num_proc
+			, mc.cores = 1
 		))
 
-		# Output
-		return(c)
+		# Output table and orphan/total read counts
+		return(list(c,
+			data.frame(
+				lorp = n_orphs_loc,
+				ltot = n_locs,
+				rorp = n_orphs,
+				rtot = n_reads
+			)))
 
 	}, cs, bin_size
-))
+	, mc.cores = num_proc
+)
+
+# Prepare orphan reads log -----------------------------------------------------
+or <- rbindlist(lapply(btt, FUN = function(x) { x[[2]] }))
+
+# Calculate orphan location absolute count and ratio
+n_orphan_loc = sum(or$lorp)
+p_orphan_loc = round(n_orphan_loc / sum(or$ltot) * 100, 2)
+cat(paste0(' · Found ', n_orphan_loc,
+	' (', p_orphan_loc, '%) orphan locations in total.\n'))
+
+# Calculate orphan read absolute count and ratio
+n_orphan = sum(or$rorp)
+p_orphan = round(n_orphan / sum(or$rtot) * 100, 2)
+cat(paste0(' · Found ', n_orphan,
+	' (', p_orphan, '%) orphan reads in total.\n'))
+
+# Write to logfile
+logfile = paste0(dirpath, condition, '.umi_prep_notes.txt')
+log = c(
+	paste0(n_orphan_loc, ' orphan locations (', p_orphan_loc, '%).'),
+	paste0(n_orphan, ' orphan reads (', p_orphan, '%).'),
+	paste0(bin_size / 2, ' nt as maximum distance from closest cutsite.')
+)
+write.table(log, logfile, row.names = F, col.names = F, quote = F, append = T)
+
+# Retrieve and merge tables
+bt <- rbindlist(lapply(btt, FUN = function(x) { x[[1]] }))
 
 # Re-format table
 bt$pos <- as.numeric(bt$pos)
@@ -150,7 +192,6 @@ bt$chr <- as.numeric(lapply(bt$chr,
 cat(' · Writing output ...\n')
 write.table(bt, file = paste0(dirpath, 'UMIpos.atcs.txt'),
 	quote = F, row.names = F, col.names = F, sep = '\t')
-
 
 # END --------------------------------------------------------------------------
 

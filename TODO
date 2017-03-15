@@ -2,8 +2,8 @@ TODO
 ===
 
 * Optimize UMI deduplication memory usage.
-* Log the UMI preparation step.
 * Optimize memory usage for linkers addition to SAM file.
+
 * Allow to remove any chromosomes, or instead specify which chromosomes to keep.
 * Move barcode sequence option to pat_files.
 * The 'unmapped'reads in SAM filter step are actually not mapped to chr1-22,X,Y.

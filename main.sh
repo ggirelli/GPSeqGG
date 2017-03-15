@@ -49,7 +49,7 @@ outcontrol=$outdir/tmp && mkdir -p $outcontrol
 logpath="$out/$expID.log"
 
 # Save command line
-echo "$0$*" > "$xout/CMD"
+echo "$0 $*" > "$xout/CMD"
 
 # START LOG ====================================================================
 clear

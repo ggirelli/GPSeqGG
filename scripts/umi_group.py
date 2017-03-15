@@ -75,7 +75,9 @@ print(' · Grouping UMIs per position ...')
 d = {}
 
 # For every read
+nr = 0
 for read in reads:
+	nr += 1
 	read = read.strip().split('\t')
 
 	# Identify position
@@ -151,6 +153,7 @@ if 0 != len(maskfile):
 	# Set counter and output variable
 	dm = {}
 	mc = 0
+	mr = 0
 	for pos in d.keys():
 		pos = pos.split('~')
 
@@ -166,10 +169,20 @@ if 0 != len(maskfile):
 				dm['~'.join(pos)] = d['~'.join(pos)]
 			else:
 				mc += 1
+				mr += len(d['~'.join(pos)][0])
 		else:
 			dm['~'.join(pos)] = d['~'.join(pos)]
 
 	print(' >>> Masked ' + str(mc) + ' locations.')
+	print(' >>> Masked ' + str(mr) + ' reads.')
+
+	# Log
+	fname = dirpath + condition + '.umi_prep_notes.txt'
+	f = open(fname, 'w+')
+	f.write(str(nr) + ' input reads.\n')
+	f.write(str(mc) + ' locations masked.\n')
+	f.write(str(mr) + ' reads masked.\n')
+	f.close()
 
 	# Output
 	print(' · Saving masked UMIs ...')

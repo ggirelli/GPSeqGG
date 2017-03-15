@@ -22,13 +22,18 @@ function filter_sam() {
 
 	# Update summary header
 	new_fields="\tsecondary_aln\tchimeras\tunmapped\tr2\tmapq < $mapqthr\trmChr"
-	new_fields="$new_fields\tafterSAMfilter"
+	new_fields="$new_fields\tumis\tumis/prefix"
 	head -n 1 $outcontrol/summary_pattern | \
 		awk -v nf="$new_fields" "{ print \$0 nf }" - \
 		> $outcontrol/summary_sam_filter
 
 	for condition in "${condv[@]}"; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
+
+		# Count condition total reads
+		echo -e "Counting condition reads..."
+		cond_count=`cat $cout/$condition/filtered.r1.fa | paste - - | \
+			wc -l | cut -d " " -f 1`
 
 		# From https://goo.gl/MNXp5o
 		function join_by { local IFS="$1"; shift; echo "$*"; }
@@ -80,9 +85,10 @@ function filter_sam() {
 		# Surviving reads	
 		c7=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
 			grep 'reads left after filtering' | head -n 1 | cut -d ' ' -f 1`
+		p7=`printf "%.2f%%" "$(bc <<< "scale = 4; $c7 / $cond_count * 100")"`
 
 		# Add to summary
-		new_fields="\t$c\t$c2\t$c3\t$c4\t$c5\t$c6\t$c7"
+		new_fields="\t$c\t$c2\t$c3\t$c4\t$c5\t$c6\t$c7\t$p7"
 		grep "$condition" "$outcontrol/summary_pattern" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> $outcontrol/summary_sam_filter
