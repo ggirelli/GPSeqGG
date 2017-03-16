@@ -18,6 +18,8 @@ v0.1.1
 * Optimized pos2cutsite script by calculating distance only from the 2 closest cutsite.
 * Log the UMI preparation step.
 * Produce properly formatted bed files per condition.
+* Moved bed creation to separate script.
+* Added header line to bed file.
 
 v0.1.0
 ===

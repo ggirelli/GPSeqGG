@@ -77,63 +77,36 @@ function prepare_umi() {
 
 		# Generate bed file ----------------------------------------------------
 
-		cslength=${#cutsite}
+		# Standard bed header
+		trackName="track name=\"$expID.$condition.dedupUMIs\" "
+		trackName="$trackName description=\"emax=$emax,eperc=$eperc"
+		trackName=$trackName",csRange=$csRange,MAPQthr=$mapqThr,pthr=$pthr"
+
 		if [ -n $csList ]; then
-			# Obtain cutsites from list and compare with uniqued UMIs
-			awkprogram='
-			FNR==NR
-			{
-				FS=OFS="\t";
-				k=$1"~"$2;
-				a[k]=$0"\t"NR;
-				next
-			}
+			# Generate bed
+			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite \
+				-f $csList
 
-			{
-				FS=OFS="\t";
-				k="chr"$1"~"$2;
-			}
-			(k in a){
-				split(a[k], cs, "\t");
-				split($0, umi, "\t");
-				n=split(umi[3], umis, " ");
-				{
-				FS=OFS="";
-				print cs[1],"\t",cs[2],"\t",cs[2]+cslen-1,"\tcs_",cs[3],"\t",n;
-				}
-			}'
-			awk -v cslen=$cslength "$awkprogram" \
-				<(cat "$csList") \
-				<(cat "$cout/$condition/UMIpos.unique.atcs.txt") \
-				> "$cout/$condition/UMIpos.unique.atcs.bed"
+			# Update bed header
+			trackName="$trackName,atcs=T\""
+			echo -e $trackName \
+				> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 
-			# Copy to main directory
-			cp "$cout/$condition/UMIpos.unique.atcs.bed" \
-				> "$out"/"$expID"_"$condition"_GG__cutsiteLoc-umiCount.atcs.bed
+			# Save bed
+			cat $cout/$condition/UMIpos.unique.atcs.bed \
+				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		else
-			# Without cutsite assignment
-			awkprogram='
-			{
-				split($0, r, "\t");
-				n=split(r[3], u, " ");
-			}
+			# Generate bed
+			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite
 
-			23==r[1]{ r[1]="X" }
-			24==r[1]{ r[1]="Y" }
+			# Update bed header
+			trackName="$trackName,atcs=F\""
+			echo -e $trackName \
+				> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 
-			0!=n{
-				FS=OFS="";
-				r[1]="chr"r[1];
-				print r[1],"\t",r[2],"\t",r[2]+cslen-1,"\tloc_",NR,"\t",n
-			}
-			'
-			awk -v cslen=$cslength "$awkprogram" \
-				<(cat "$cout/$condition/UMIpos.unique.txt") \
-				> "$cout/$condition/UMIpos.unique.bed"
-
-			# Copy to main directory
-			cp "$cout/$condition/UMIpos.unique.bed" \
-				> "$out"/"$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed
+			# Save bed
+			cat $cout/$condition/UMIpos.unique.bed \
+				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		fi
 
 		# Update summary -------------------------------------------------------

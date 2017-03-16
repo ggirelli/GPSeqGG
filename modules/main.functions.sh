@@ -63,13 +63,13 @@ function execute_step() {
 	else
 		msg="\nRun $step?\nYes (y), Skip (s), Abort (a)"
 		echo -e $msg
-		read -e ans
+		read -n 1 -e ans
 	fi
 	end=0
 	while [[ 0 -eq $end ]]; do
 		if [[ -z $ans ]]; then
 			echo -e $msg
-			read -e ans
+			read -n 1 -e ans
 		elif [[ 'a' == $ans ]]; then
 			end=1
 			echo "Aborted."
@@ -83,7 +83,7 @@ function execute_step() {
 			end=1
 		else
 			echo -e $msg
-			read -e ans
+			read -n 1 -e ans
 		fi
 	done
 }
