@@ -42,9 +42,20 @@ while getopts ho:c:f:t: opt; do
 done
 
 # Read list of bedfile paths
-
+bedfiles=()
+for bf in $@; do
+	# Check that specified bed files exist
+	if [ -e $bf ]; then
+		bedfiles+=("$bf")
+	else
+		msg="!!! Specified file not found.\n    File: $bf"
+		echo -e "$helps\n$msg"
+		exit 1
+	fi
+done
 
 # RUN ==========================================================================
+
 
 
 # End --------------------------------------------------------------------------
