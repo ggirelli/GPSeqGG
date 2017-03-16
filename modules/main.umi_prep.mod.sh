@@ -94,11 +94,9 @@ function prepare_umi() {
 
 			# Update bed header
 			trackName="$trackName,atcs=T\""
-			echo -e $trackName \
-				> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.atcs.bed \
+			cat $cout/$condition/UMIpos.unique.atcs.bed -t "$trackName" \
 				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		else
 			# Generate bed
@@ -106,11 +104,9 @@ function prepare_umi() {
 
 			# Update bed header
 			trackName="$trackName,atcs=F\""
-			echo -e $trackName \
-				> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.bed \
+			cat $cout/$condition/UMIpos.unique.bed -t "$trackName" \
 				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		fi
 

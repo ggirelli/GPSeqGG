@@ -36,13 +36,13 @@ check_settings
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
 # Input folders
-in=$indir/indatamkdir -p $in
+in=$indir/indata && mkdir -p $in
 
 # Output folders
-out=$outdir/mkdir -p $out
-cout=$outdir/conditionsmkdir -p $cout
-pout=$outdir/plotmkdir -p $pout
-xout=$outdir/auxmkdir -p $xout
+out=$outdir/ && mkdir -p $out
+cout=$outdir/conditions && mkdir -p $cout
+pout=$outdir/plot && mkdir -p $pout
+xout=$outdir/aux && mkdir -p $xout
 
 # Additional outputs
 outcontrol=$outdir/tmpmkdir -p $outcontrol

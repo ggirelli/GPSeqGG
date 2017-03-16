@@ -7,5 +7,8 @@ TODO
 
 * Allow to remove any chromosomes, or instead specify which chromosomes to keep.
 * The 'unmapped'reads in SAM filter step are actually not mapped to chr1-22,X,Y.
+* Make pipeline not fixed for human genome (i.e., chr1-22,X,Y)
+
+* Add visualization options to the bedfile header line.
 
 * Implement global radiality centrality.

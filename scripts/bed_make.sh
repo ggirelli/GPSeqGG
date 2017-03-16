@@ -61,7 +61,7 @@ while getopts ho:c:f:t: opt; do
 			fi
 		;;
 		t)
-			headerLin=$OPTARG
+			headerLine=$OPTARG
 		;;
 	esac
 done
@@ -76,6 +76,9 @@ fi
 
 # Count cutsite size
 csLen=${#csSeq}
+
+# Print bedfile header line
+echo -e "$headerLine" >  "$out_dir/UMIpos.unique.atcs.bed"
 
 if [ -n $csList ]; then
 	# Obtain cutsites from list and compare with uniqued UMIs
@@ -108,7 +111,7 @@ if [ -n $csList ]; then
 	}'
 	awk -v cslen=$csLen "$awkprogram" <(cat "$csList") \
 		<(cat "$out_dir/UMIpos.unique.atcs.txt" | tr -d " " | sort -nk 1) \
-		> "$out_dir/UMIpos.unique.atcs.bed"
+		>> "$out_dir/UMIpos.unique.atcs.bed"
 else
 	# Without cutsite assignment
 	awkprogram='
