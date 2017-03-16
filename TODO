@@ -9,3 +9,5 @@ TODO
 * The 'unmapped'reads in SAM filter step are actually not mapped to chr1-22,X,Y.
 
 * Implement global radiality centrality.
+* Move bed creation to separate script.
+* Add header line to bed file.
