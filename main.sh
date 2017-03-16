@@ -45,7 +45,7 @@ pout=$outdir/plot && mkdir -p $pout
 xout=$outdir/aux && mkdir -p $xout
 
 # Additional outputs
-outcontrol=$outdir/tmpmkdir -p $outcontrol
+outcontrol=$outdir/tmp && mkdir -p $outcontrol
 logpath="$out/$expID.log"
 
 # Save command line
