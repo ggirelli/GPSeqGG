@@ -36,16 +36,16 @@ check_settings
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
 # Input folders
-in=$indir/indata && mkdir -p $in
+in=$indir/indatamkdir -p $in
 
 # Output folders
-out=$outdir/ && mkdir -p $out
-cout=$outdir/conditions && mkdir -p $cout
-pout=$outdir/plots && mkdir -p $pout
-xout=$outdir/aux && mkdir -p $xout
+out=$outdir/mkdir -p $out
+cout=$outdir/conditionsmkdir -p $cout
+pout=$outdir/plotmkdir -p $pout
+xout=$outdir/auxmkdir -p $xout
 
 # Additional outputs
-outcontrol=$outdir/tmp && mkdir -p $outcontrol
+outcontrol=$outdir/tmpmkdir -p $outcontrol
 logpath="$out/$expID.log"
 
 # Save command line

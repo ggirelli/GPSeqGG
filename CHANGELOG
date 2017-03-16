@@ -20,6 +20,7 @@ v0.1.1
 * Produce properly formatted bed files per condition.
 * Moved bed creation to separate script.
 * Added header line to bed file.
+* Moved barcode sequence option to pat_files.
 
 v0.1.0
 ===

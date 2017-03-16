@@ -35,10 +35,15 @@ function prepare_umi() {
 
 	function prepare_umi_single_condition() {
 		echo -e "\nPreparing UMIs from condition '$condition'..."
+
 		cslbool=0
 		if [[ -n $csList ]]; then
 			cslbool=1
 		fi
+
+		# Retrieve cutsite sequence
+		cutsite=`grep -e "^$condition\t" "$indir/pat_files" | \
+			cut -d 3 | head -n 1`
 
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n $maskFile ]]; then

@@ -15,8 +15,8 @@
 
 # Help string
 helps="
-usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
- [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
+usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
+ [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
  [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
@@ -26,14 +26,13 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
  Required files:
   Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
   input directory (inDir). The patterns file should have a condition per row
-  with condition name, pattern (scan_for_mateches format) and non-genomic
-  portion length separated by tabulations.
+  with condition name, pattern (scan_for_mateches format), cutsite sequence and
+  non-genomic portion length, separated by tabulations.
 
  Mandatory arguments:
   -i indir	Input directory.
   -o outdir	Output directory. Created if not found.
   -e expID	Experiment ID.
-  -c conditions	Comma-separated conditions.
 
  Optional arguments:
   -h	Show this help page.
@@ -45,7 +44,6 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
   -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
   -g refGenome	Path to reference genome file. Default: 'hg19'.
   -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
-  -f cutsite	Cutsite sequence. Default: 'AAGCTT' (HindIII).
   -q mapqThr	Mapping quality threshold. Default: 1.
   -p platform	Sequencing platform. Default: 'L'.
   -u umilength	UMI sequence length. Default: 8.
@@ -66,7 +64,6 @@ rmX=false
 rmY=false
 aligner='bwa'
 refGenome='hg19'
-cutsite='AAGCTT'
 mapqThr=30
 platform='L'
 umiLength=8
@@ -78,7 +75,7 @@ emax=1e-3
 eperc=20
 
 # Parse options
-while getopts hwt:i:o:e:c:ng:a:d:xyf:q:p:u:r:z:b:j:k:l:m:s: opt; do
+while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 	case $opt in
 		h)
 			# Help
@@ -119,12 +116,6 @@ while getopts hwt:i:o:e:c:ng:a:d:xyf:q:p:u:r:z:b:j:k:l:m:s: opt; do
 			# Experiment ID
 			expID=$OPTARG
 		;;
-		c)
-			# Comma-separated condition string
-			conds=$OPTARG
-			# Condition array
-			IFS=',' read -r -a condv <<< "$conds"
-		;;
 		n)
 			# Negative condition label
 			neg='neg'
@@ -160,10 +151,6 @@ while getopts hwt:i:o:e:c:ng:a:d:xyf:q:p:u:r:z:b:j:k:l:m:s: opt; do
 		y)
 			# Remove chrY after alignment
 			rmY=true
-		;;
-		f)
-			# Cutsite sequence
-			cutsite=$OPTARG
 		;;
 		q)
 			# Mapping quality threshold
@@ -241,14 +228,39 @@ if [ -z "$expID" ]; then
 	echo -e "$helps\n!!! Missing mandatory -e option.\n"
 	exit 1
 fi
-if [ -z "$conds" ]; then
-	echo -e "$helps\n!!! Missing mandatory -c option.\n"
-	exit 1
-fi
 
 # Additional checks
 if [ "bwa" == "$aligner" -a -z "$bwaIndex" ]; then
 	echo -e "$helps\n!!! Missing mandatory -d option.\n"
+	exit 1
+fi
+
+# Check pat_files --------------------------------------------------------------
+
+if [ -e "$indir/pat_files" ]; then
+
+	# Count columns
+	for i in $(seq 1 `wc -l $indir/pat_files | cut -d " " -f 1`); do
+		# Retrieve pattern row
+		row=`cat $indir/pat_files | head -n $i | tail -n 1`
+
+		# Count fields
+		nc=`echo "$row" | awk '{ n=split($0, t, "\t"); print n; }' | uniq`
+
+		# Check field number
+		if [ 4 -ne $nc ]; then
+			msg="!!! Missing columns in pat_files, row $i.\n"
+			msg="$msg    Expected 4 columns, found $nc."
+			echo -e "$helps\n$msg"
+			exit 1
+		fi
+	done
+
+	conds=`cut -f 1 $indir/pat_files | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
+	IFS=',' read -r -a condv <<< "$conds"
+else
+	msg="!!! Missing pat_files."
+	echo -e "$helps\n$msg"
 	exit 1
 fi
 
@@ -282,7 +294,6 @@ settings="$settings
 
  Threads: $threads
 
- Cutsite sequence: $cutsite
  Reference genome: $refGenome
  Aligner: $aligner"
 if [ -n $bwaIndex ]; then
