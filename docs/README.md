@@ -4,8 +4,8 @@ Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis
 ## The `main` script
 
 ```
-usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
- [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-f cutsite][-q mapqThr]
+usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
+ [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
  [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
@@ -15,14 +15,13 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
  Required files:
   Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
   input directory (inDir). The patterns file should have a condition per row
-  with condition name, pattern (scan_for_mateches format) and pattern length
-  separated by tabulations.
+  with condition name, pattern (scan_for_mateches format), cutsite sequence and
+  non-genomic portion length, separated by tabulations.
 
  Mandatory arguments:
   -i indir      Input directory.
   -o outdir     Output directory. Created if not found.
   -e expID      Experiment ID.
-  -c conditions Comma-separated conditions.
 
  Optional arguments:
   -h            Show this help page.
@@ -34,7 +33,6 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID -c conditions
   -a aligner    Aligner. Either 'bwa' (default) or 'bowtie2'.
   -g refGenome  Path to reference genome file. Default: 'hg19'.
   -d bwaIndex   Path to BWA index file. Required if BWA is the selected aligner.
-  -f cutsite    Cutsite sequence. Default: 'AAGCTT' (HindIII).
   -q mapqThr    Mapping quality threshold. Default: 1.
   -p platform   Sequencing platform. Default: 'L'.
   -u umilength  UMI sequence length. Default: 8.
@@ -81,12 +79,12 @@ Description of different output files.
 
 At least two files are required: a sequencing platform output file (R1), and a `pat_files` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
 
-The `pat_files`, which is expected to be located in the input folder, contains a row per condition (as specified in the `-c conditions` argument). Every row contains the following tab-separated information: condition label, scan_for_matches pattern, pattern length. An example being the following:
+The `pat_files`, which is expected to be located in the input folder, contains a row per condition (as specified in the `-c conditions` argument). Every row contains the following tab-separated information: condition label, scan_for_matches pattern, cutsite sequence, pattern length. An example being the following:
 
-    neg ^ 8...8 CATCAGAA AAGCTT 1...1000 $  22
-    1min    ^ 8...8 CATCATCC AAGCTT 1...1000 $  22
-    10min   ^ 8...8 GTCGTTCC AAGCTT 1...1000 $  22
-    2h  ^ 8...8 TGATGTCC AAGCTT 1...1000 $  22
+    neg ^ 8...8 CATCAGAA AAGCTT 1...1000 $  AAGCTT  22
+    1min    ^ 8...8 CATCATCC AAGCTT 1...1000 $  AAGCTT  22
+    10min   ^ 8...8 GTCGTTCC AAGCTT 1...1000 $  AAGCTT  22
+    2h  ^ 8...8 TGATGTCC AAGCTT 1...1000 $  AAGCTT  22
 
 ## Other scripts
 
