@@ -43,7 +43,7 @@ function prepare_umi() {
 
 		# Retrieve cutsite sequence
 		cutsite=`grep -e "^"condition "$indir/pat_files" | \
-			cut -d 3 | head -n 1`
+			cut -f 3 | head -n 1`
 
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n $maskFile ]]; then
@@ -85,28 +85,29 @@ function prepare_umi() {
 		# Standard bed header
 		trackName="track name=\"$expID.$condition.dedupUMIs\" "
 		trackName="$trackName description=\"emax=$emax,eperc=$eperc"
-		trackName=$trackName",csRange=$csRange,MAPQthr=$mapqThr,pthr=$pthr"
+		trackName="$trackName,csRange=$csRange,MAPQthr=$mapqThr,pthr=$pthr"
 
 		if [ -n $csList ]; then
-			# Generate bed
-			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite \
-				-f $csList
-
 			# Update bed header
 			trackName="$trackName,atcs=T\""
 
+			# Generate bed
+			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite \
+				-f $csList  -t "$trackName"
+
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.atcs.bed -t "$trackName" \
+			cat $cout/$condition/UMIpos.unique.atcs.bed \
 				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		else
-			# Generate bed
-			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite
-
 			# Update bed header
 			trackName="$trackName,atcs=F\""
 
+			# Generate bed
+			$scriptdir/bed_make.sh -o $cout/$condition/ \
+				-c $cutsite -t "$trackName"
+
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.bed -t "$trackName" \
+			cat $cout/$condition/UMIpos.unique.bed \
 				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		fi
 
