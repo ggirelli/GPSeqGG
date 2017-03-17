@@ -89,7 +89,7 @@ d="$out_dir/$condition/"
 # RUN ==========================================================================
 
 # Select non-genomic region length
-length=`grep "$condition" $patFile | cut -f 3`
+length=`grep "$condition" $patFile | cut -f 4`
 echo -e " · Trimming the first $length bases (pattern file)."
 
 # TRIM -----------------------------------------------------------------
