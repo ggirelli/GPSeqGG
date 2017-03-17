@@ -1,0 +1,26 @@
+# REQUIRED SOFTWARE
+
+* bwa
+* bowtie2
+
+On Ubuntu, run: `sudo apt install bwa bowtie2`
+
+# REQUIRED R LIBRARIES
+
+* argparser
+* data.table
+* ggplot2
+* grid
+* gridExtra
+* parallel
+* readr
+* reshape2
+
+Install them from within R with the `install.packages()` command.
+
+# REQUIRED PYTHON LIBRARIES
+
+* argparse
+* sys
+
+Install them with `pip install`.
