@@ -6,6 +6,7 @@
 # Email: gigi.ga90@gmail.com
 # Version: 0.1.0
 # Description: selects reads based on the provided pattern
+# Requires: scan_for_matches
 # 
 # ------------------------------------------------------------------------------
 

@@ -224,11 +224,11 @@ if ( 0 != length(rmChr) ) {
 
 # Output 1 ---------------------------------------------------------------------
 
-cat(' · Writing output ...\n')
+#cat(' · Writing output ...\n')
 notes = paste0(notes, nrow(mt), " reads left after filtering.\n")
 #write.table(mt, paste0(condition, '.filtered.sam'),
 #	row.names = F, col.names = F, quote = F, sep = '\t')
-save(mt, file = paste0(condition, '.filtered.sam.RData'))
+#save(mt, file = paste0(condition, '.filtered.sam.RData'))
 
 # Reset position of reverse complement strand ----------------------------------
 

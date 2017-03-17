@@ -6,9 +6,7 @@
 # Email: gigi.ga90@gmail.com
 # Version: 0.1.0
 # Description: run fastqc tool
-# 
-# Usage:
-# ./quality_control numbOfiles ncores outFolder r1file [r2file]
+# Requires: fastqc
 # 
 # ------------------------------------------------------------------------------
 

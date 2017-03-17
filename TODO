@@ -4,6 +4,7 @@ TODO
 * Optimize UMI deduplication memory usage.
 * Optimize memory usage for linkers addition to SAM file.
 * Optimize binning.
+* Optimize SAM filtering using AWK.
 
 * Allow to remove any chromosomes, or instead specify which chromosomes to keep.
 * The 'unmapped'reads in SAM filter step are actually not mapped to chr1-22,X,Y.

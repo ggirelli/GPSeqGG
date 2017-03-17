@@ -2,8 +2,17 @@
 
 * bwa
 * bowtie2
+* fastqc
+* scan_for_matches
 
-On Ubuntu, run: `sudo apt install bwa bowtie2`
+On Ubuntu, run: `sudo apt install bwa bowtie2 fastqc`
+
+Download scan_for_matches from http://www.theseed.org/servers/downloads/scan_for_matches.tgz
+Follow the instruction to install it: http://blog.theseed.org/servers/2010/07/scan-for-matches.html
+Then, add the path of the uncompressed (with uncompress) folder to your $PATH env variable with: `export PATH=$PATH:path_to_scan_for_matches`
+
+If, after installation, fastqc complains of missing files, download them from:
+https://github.com/ggirelli/configs/tree/master/fastqc/Configuration
 
 # REQUIRED R LIBRARIES
 
