@@ -41,7 +41,7 @@ in=$indir/indata && mkdir -p $in
 # Output folders
 out=$outdir/ && mkdir -p $out
 cout=$outdir/conditions && mkdir -p $cout
-pout=$outdir/plot && mkdir -p $pout
+pout=$outdir/plots && mkdir -p $pout
 xout=$outdir/aux && mkdir -p $xout
 
 # Additional outputs

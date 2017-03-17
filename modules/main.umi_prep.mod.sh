@@ -37,16 +37,16 @@ function prepare_umi() {
 		echo -e "\nPreparing UMIs from condition '$condition'..."
 
 		cslbool=0
-		if [[ -n $csList ]]; then
+		if [[ -n "$csList" ]]; then
 			cslbool=1
 		fi
 
 		# Retrieve cutsite sequence
-		cutsite=`grep -e "^"condition "$indir/pat_files" | \
+		cutsite=`grep -e "^"$condition "$indir/pat_files" | \
 			cut -f 3 | head -n 1`
 
 		# Group UMIs -----------------------------------------------------------
-		if [[ -n $maskFile ]]; then
+		if [[ -n "$maskFile" ]]; then
 			time $scriptdir/umi_group.py $cout/$condition/ $expID $condition \
 				$umiLength --mask-file $maskFile & pid0=$!
 			wait $pid0
@@ -56,7 +56,7 @@ function prepare_umi() {
 			wait $pid0
 		fi
 
-		if [[ -n $csList ]]; then
+		if [[ -n "$csList" ]]; then
 			# Assign UMIs to cutsites ------------------------------------------
 			time $scriptdir/pos2cutsites.R $cout/$condition/ $expID $condition \
 				$csList -i $csRange -c $threads & pid0=$!
@@ -71,7 +71,7 @@ function prepare_umi() {
 				-em $emax -ep $eperc & pid0=$!
 			wait $pid0
 		else
-			if [[ -n $csList ]]; then
+			if [[ -n "$csList" ]]; then
 				cp $cout/$condition/UMIpos.atcs.txt \
 					$cout/$condition/UMIpos.unique.atcs.txt
 			else
@@ -87,7 +87,7 @@ function prepare_umi() {
 		trackName="$trackName description=\"emax=$emax,eperc=$eperc"
 		trackName="$trackName,csRange=$csRange,MAPQthr=$mapqThr,pthr=$pthr"
 
-		if [ -n $csList ]; then
+		if [ -n "$csList" ]; then
 			# Update bed header
 			trackName="$trackName,atcs=T\""
 

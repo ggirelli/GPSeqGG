@@ -80,7 +80,7 @@ csLen=${#csSeq}
 # Print bedfile header line
 echo -e "$headerLine" >  "$out_dir/UMIpos.unique.atcs.bed"
 
-if [ -n $csList ]; then
+if [ -n "$csList" ]; then
 	# Obtain cutsites from list and compare with uniqued UMIs
 	awkprogram='
 	("chr23"==$1){ $1="chrX" }

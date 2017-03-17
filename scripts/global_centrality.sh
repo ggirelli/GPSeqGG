@@ -100,7 +100,9 @@ for chr in $(echo $(seq 1 22) X); do
 	ncs=`cat $csList | grep $chr | wc -l`
 
 	if [ 0 -eq $ncs ]; then
-		continue
+		msg="!!! No cutsites found in $chr.\n    Please re-run without $chr."
+		echo -e "$msg"
+		exit 1
 	fi
 
 	# Array of normalized counts
