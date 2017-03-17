@@ -133,16 +133,14 @@ for chr in $(echo $(seq 1 22) X Y); do
 	matrix="$matrix$newrow\n"
 done
 
-# Writing matrix
-echo -e "$matrix" > matrix.tmp.dat
+# Calculate ratio (B/A) between consecutive conditions
+for i in $(seq 2 ${#bedfiles[@]}); do
+	# Divide column i-th by column (i-1)-th
+done
 
+# Sort & rank
 
-
-
-# build rankings by comparing consecutive conditions
-# 	compare with ratio B/A
-# Make table with position and rankings
-# Sum rankings and sort
+# Sum rankings & sort
 
 # End --------------------------------------------------------------------------
 
