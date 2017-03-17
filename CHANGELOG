@@ -21,6 +21,7 @@ v0.1.1
 * Moved bed creation to separate script.
 * Added header line to bed file.
 * Moved barcode sequence option to pat_files.
+* Added global centrality script.
 
 v0.1.0
 ===
