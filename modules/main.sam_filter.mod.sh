@@ -31,8 +31,8 @@ function filter_sam() {
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
 		# Retrieve cutsite sequence
-		cutsite=`grep -e "^$condition\t" "$indir/pat_files" | \
-			cut -d 3 | head -n 1`
+		cutsite=`grep -e "^"$condition "$indir/pat_files" | \
+			cut -f 3 | head -n 1`
 
 		# Count condition total reads
 		echo -e "Counting condition reads..."

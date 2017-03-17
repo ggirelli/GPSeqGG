@@ -42,7 +42,7 @@ function prepare_umi() {
 		fi
 
 		# Retrieve cutsite sequence
-		cutsite=`grep -e "^$condition\t" "$indir/pat_files" | \
+		cutsite=`grep -e "^"condition "$indir/pat_files" | \
 			cut -d 3 | head -n 1`
 
 		# Group UMIs -----------------------------------------------------------
