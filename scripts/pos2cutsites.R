@@ -89,6 +89,12 @@ btt <- mclapply(split(umi, umi_num),
 		# Calculate distance from closest cutsite and identify it
 		ds <- rbindlist(mclapply(t$pos,
 			FUN = function(x, cs) {
+				if ( x > max(cs) ) {
+					csid = which.max(cs)
+					darr = x - cs[csid]
+					return(data.frame(d = darr, id = csid))
+				}
+
 				csid = which(cs >= x)[1]
 				darr = c(cs[csid] - x, x - cs[min(1, csid - 1)])
 				if ( 2 == which.min(darr) ) csid = min(1, csid -1)
