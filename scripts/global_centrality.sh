@@ -84,17 +84,38 @@ for bf in $*; do
 	fi
 done
 
+# TEST =========================================================================
+
+if [ 0 -eq 1 ]; then
+	bedfiles=()
+	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t2\nchr3\t0\t0\t1")
+	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t4\nchr3\t0\t0\t3")
+	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t8\nchr3\t0\t0\t9")
+
+	outFile="output"
+
+	for i in $(seq 0 `bc <<< "${#bedfiles[@]} - 1"`); do
+		echo -e ${bedfiles[$i]} > c$i.tmp
+		bedfiles[$i]="c$i.tmp"
+		echo -e "\n"${bedfiles[$i]}
+		cat ${bedfiles[$i]}
+	done
+fi
+
 # RUN ==========================================================================
 
 # Generate cumulative probability distribution matrix --------------------------
 # One chromosome per row, one condition per column.
+echo -e " · Preparing matrices..."
 
 # Default empty matrix
-matrix=""
+matrix_crs=""
+matrix_rcs=""
 
 # Cycle over chromosomes
 for chr in $(echo $(seq 1 22) X); do
 	chr="chr$chr"
+	echo -e " >>> Working on $chr..."
 
 	# Number of cutsite in the chromosome
 	ncs=`cat $csList | grep $chr | wc -l`
@@ -106,10 +127,15 @@ for chr in $(echo $(seq 1 22) X); do
 	fi
 
 	# Array of normalized counts
+	# crs: Cumulative of the RatioS
+	# rcs: Ratio of the CumulativeS
+	crs=(0)
+	rcs=(0)
 	counts=(0)
+	totals=(0)
 	for i in $(seq 0 `expr ${#bedfiles[@]} - 1`); do
 		bf=${bedfiles[$i]}
-
+		
 		# Number of reads in the condition
 		ncc=`cat $bf | sed 1d | cut -f 5 | paste -sd+ | bc`
 		
@@ -130,87 +156,140 @@ for chr in $(echo $(seq 1 22) X); do
 			echo -e "$msg"
 			exit 1
 		fi
-		
-		# Normalize
-		r=`bc -l <<< "$n / $ncc / $ncs"`
-		
-		# Sum previous ratio
-		r=`bc <<< "${counts[${#counts[@]} - 1]}+$r"`
+
+		# Ratio of the sums ----------------------------------------------------
+
+		# Prepare rations
+		prev_n=${counts[${#counts[@]}-1]}
+		prev_ncc=${totals[${#totals[@]}-1]}
+		r1=`bc -l <<< "($n + $prev_n) / ($ncc + $prev_ncc) / $ncs"`
 
 		# Add leading 0
-		r=`echo "$r" | sed -r "s/^\.(.*)$/0.\1/"`
+		r1=`echo "$r1" | sed -r "s/^\.(.*)$/0.\1/"`
 
 		# To check the calculations uncomment the following line
-		# echo -e "$n / $ncc / $ncs + ${counts[${#counts[@]} - 1]} = $r"
+		# echo -e "($n + $prev_n) / ($ncc + $prev_ncc) / $ncs = $r1"
+
+		# Store in the arrays
+		counts+=($n)
+		totals+=($ncc)
+		rcs+=($r1)
+
+		# Sum of the ratios ----------------------------------------------------
+		
+		# Normalize
+		r2=`bc -l <<< "$n / $ncc / $ncs"`
+		
+		# Sum previous ratio
+		r2=`bc <<< "${crs[${#crs[@]} - 1]}+$r2"`
+
+		# Add leading 0
+		r2=`echo "$r2" | sed -r "s/^\.(.*)$/0.\1/"`
+
+		# To check the calculations uncomment the following line
+		# echo -e "$n / $ncc / $ncs = $r2"
 		
 		# Save normalized counts
-		counts+=($r)
+		crs+=($r2)
 	done
 
 	# Remove starting value (0)
-	unset counts[0]
+	unset crs[0]
+	unset rcs[0]
 
 	# Merging cumulative set
-	merged=`join_by " " "${counts[@]}"`
+	merged_crs=`join_by " " "${crs[@]}"`
+	merged_rcs=`join_by " " "${rcs[@]}"`
 
 	# Forming new matrix row
-	newrow=`echo "$chr $merged" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_crs=`echo "$chr $merged_crs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_rcs=`echo "$chr $merged_rcs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 
 	# Adding row to matrix
-	matrix="$matrix$newrow\n"
+	matrix_crs="$matrix_crs$nrow_crs\n"
+	matrix_rcs="$matrix_rcs$nrow_rcs\n"
 done
 
 # To save the matrix to file uncomment the following line
-# echo -e "$matrix" > matrix.tmp.tsv
+#echo -e "$matrix_crs" > matrix.crs.tmp.tsv
+#echo -e "$matrix_rcs" > matrix.rcs.tmp.tsv
 
 # Calculate ratio (B/A) between consecutive conditions -------------------------
+echo -e " · Normalizing matrices..."
 
-awkprogram='@include "join";
-NF {
-	c=1;
-    for (B = 3; B <= NF; B++) {
-        A=B-1;
-        a[c]=$B/$A;
-        c++;
-    }
+function normatrix() {
+	matrix=$1
 
-	OFS=FS="\t";
-	OFMT="%.4f"
-    print $1 OFS join(a, 1, c, OFS);
-}'
-normatrix=`echo -e "$matrix" | awk "$awkprogram"`
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        A=B-1;
+	        a[c]=$B/$A;
+	        c++;
+	    }
+
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+normatrix_crs=`normatrix "$matrix_crs"`
+normatrix_rcs=`normatrix "$matrix_rcs"`
 
 # To save the normalized matrix to file uncomment the following line
-# echo -e "$normatrix" > normatrix.tmp.tsv
+#echo -e "$normatrix_crs" > normatrix.crs.tmp.tsv
+#echo -e "$normatrix_rcs" > normatrix.rcs.tmp.tsv
 
 # Sort & rank ------------------------------------------------------------------
+echo -e " · Sorting and ranking..."
 
-ranked=""
-for i in $(seq 2 `expr ${#bedfiles[@]}`); do
-	ranking=`echo -e "$normatrix" | cut -f 1,$i | \
-		awk '{ print NR OFS $1 OFS $2 }' | sort -k3,3n | \
-		awk '{ print $1 OFS $2 OFS NR }' | sort -k1,1n | cut -d " " -f 2,3`
+function rank_normatrix() {
+	normatrix=$1
+	nbeds=$2
 
-	if [ -z "$ranked" ]; then
-		ranked=$ranking
-	else
-		ranked=`join --nocheck-order <(echo -e "$ranked") <(echo -e "$ranking")`
-	fi
-done
+	ranked=""
+	for i in $(seq 2 $nbeds); do
+		ranking=`echo -e "$normatrix" | cut -f 1,$i | \
+			awk '{ print NR OFS $1 OFS $2 }' | sort -k3,3n | \
+			awk '{ print $1 OFS $2 OFS NR }' | sort -k1,1n | cut -d " " -f 2,3`
+
+		if [ -z "$ranked" ]; then
+			ranked=$ranking
+		else
+			ranked=`join --nocheck-order <(echo -e "$ranked") \
+				<(echo -e "$ranking")`
+		fi
+	done
+
+	echo -e "$ranked"
+}
+ranked_crs=`rank_normatrix "$normatrix_crs" ${#bedfiles[@]}`
+ranked_rcs=`rank_normatrix "$normatrix_rcs" ${#bedfiles[@]}`
+
 
 # To save the conditional rankings to file uncomment the following line
-# echo -e "$ranked" > rankings.tmp.tsv
+#echo -e "$ranked_crs" > rankings.crs.tmp.tsv
+#echo -e "$ranked_rcs" > rankings.rcs.tmp.tsv
 
 # Sum rankings & sort ----------------------------------------------------------
+echo -e " · Summing and sorting..."
 
-awkprogram='
-{
-	tot=0;
-	for ( i = 2; i <= NF; i++ )
-		tot+=$i;
-	print $1 OFS tot;
-}'
-echo -e "$ranked" | tr " " "\t" | awk "$awkprogram" | sort -k2,2n > $outFile
+function sumsort_ranks() {
+	ranked=$1
+
+	awkprogram='
+	{
+		tot=0;
+		for ( i = 2; i <= NF; i++ )
+			tot+=$i;
+		print $1 OFS tot;
+	}'
+	echo -e "$ranked" | tr " " "\t" | awk "$awkprogram" | sort -k2,2n
+}
+sumsort_ranks "$ranked_rcs"  > "$outFile".rcs.txt
+sumsort_ranks "$ranked_crs"  > "$outFile".crs.txt
 
 # End --------------------------------------------------------------------------
 
