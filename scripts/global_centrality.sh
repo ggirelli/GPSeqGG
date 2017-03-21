@@ -172,8 +172,8 @@ for chr in $(echo $(seq 1 22) X); do
 		# echo -e "($n + $prev_n) / ($ncc + $prev_ncc) / $ncs = $r1"
 
 		# Store in the arrays
-		counts+=($n)
-		totals+=($ncc)
+		counts+=(`bc <<< "$n + $prev_n"`)
+		totals+=(`bc <<< "$ncc + $prev_ncc"`)
 		rcs+=($r1)
 
 		# Sum of the ratios ----------------------------------------------------
