@@ -88,9 +88,9 @@ done
 
 if [ 0 -eq 1 ]; then
 	bedfiles=()
-	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t2\nchr3\t0\t0\t1")
-	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t4\nchr3\t0\t0\t3")
-	bedfiles+=("#\nchr1\t0\t0\t1\nchr2\t0\t0\t8\nchr3\t0\t0\t9")
+	bedfiles+=("#\nchr1\t0\t0\t0\t1\nchr2\t0\t0\t0\t2\nchr3\t0\t0\t0\t1")
+	bedfiles+=("#\nchr1\t0\t0\t0\t1\nchr2\t0\t0\t0\t4\nchr3\t0\t0\t0\t3")
+	bedfiles+=("#\nchr1\t0\t0\t0\t1\nchr2\t0\t0\t0\t8\nchr3\t0\t0\t0\t9")
 
 	outFile="output"
 
@@ -118,7 +118,7 @@ for chr in $(echo $(seq 1 22) X); do
 	echo -e " >>> Working on $chr..."
 
 	# Number of cutsite in the chromosome
-	ncs=`cat $csList | grep $chr | wc -l`
+	ncs=`cat $csList | awk -v chr=$chr '$1 == chr' | wc -l`
 
 	if [ 0 -eq $ncs ]; then
 		msg="!!! No cutsites found in $chr.\n    Please re-run without $chr."
@@ -147,7 +147,8 @@ for chr in $(echo $(seq 1 22) X); do
 		fi
 
 		# Number of reads in the condition in the chromosome
-		n=`cat $bf | sed 1d | grep $chr | cut -f 5 | paste -sd+ | bc`
+		n=`cat $bf | sed 1d | awk -v chr=$chr '$1 == chr' | \
+			cut -f 5 | paste -sd+ | bc`
 		
 		if [ -z "$n" ]; then
 			msg="!!! No reads found in condition #$i on $chr.\n"
