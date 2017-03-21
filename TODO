@@ -1,6 +1,7 @@
 TODO
 ===
 
+* Optimize pattern filtered file generation.
 * Optimize UMI deduplication memory usage.
 * Optimize memory usage for linkers addition to SAM file.
 * Optimize binning.
@@ -8,6 +9,7 @@ TODO
 
 * Allow to remove any chromosomes, or instead specify which chromosomes to keep.
 * The 'unmapped'reads in SAM filter step are actually not mapped to chr1-22,X,Y.
+* Use proper SAM format when adding linker information to the SAM file.
 * Make pipeline not fixed for human genome (i.e., chr1-22,X,Y)
 
 * Add visualization options to the bedfile header line.
