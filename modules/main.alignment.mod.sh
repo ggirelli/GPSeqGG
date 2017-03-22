@@ -32,7 +32,7 @@ function alignment() {
 
 		# Run aligner ----------------------------------------------------------
 		if [ -n "$bwaIndex" -a "bwa" == "$aligner" ]; then
-			bwaOpt="-d $bwaIndex"
+			bwaOpt="-i $bwaIndex"
 		fi
 		if [ $numb_of_files -eq 2 ]; then
 			# Paired-end

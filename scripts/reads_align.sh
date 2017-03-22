@@ -47,7 +47,7 @@ ref='hg19'
 aligner='bwa'
 
 # Parse options
-while getopts ht:o:c:pr:a: opt; do
+while getopts ht:o:c:pr:a:i: opt; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
