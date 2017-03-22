@@ -784,33 +784,57 @@ pre {
   onReady(function(){convertUML('uml-sequence-diagram', Diagram, {theme: 'simple'});});
 })(window, document)
 </script>
-<title>README</title></head><body><article class="markdown-body"><h1>
-<a id="user-content-genomic-loci-positioning-by-sequencing-gpseq-sequencing-data-analysis" class="anchor" href="#genomic-loci-positioning-by-sequencing-gpseq-sequencing-data-analysis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis</h1>
+<title>HOWTO</title></head><body><article class="markdown-body"><h1>
+<a id="user-content-how-to-run-gpseq-seq-gg" class="anchor" href="#how-to-run-gpseq-seq-gg" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>HOW-TO run gpseq-seq-gg</h1>
 
 <h2>
-<a id="user-content-the-main-script" class="anchor" href="#the-main-script" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>The <code>main</code> script</h2>
+<a id="user-content-prepare-your-data" class="anchor" href="#prepare-your-data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prepare your data</h2>
 
-<pre><code>usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
- [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
- [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
- [-b binStep][-l csList][-m maskFile][-s chrLengths]
+<h3>
+<a id="user-content-1-input-folder" class="anchor" href="#1-input-folder" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>1. Input folder</h3>
 
- Description:
-  Run a step-by-step interactive GPSeq sequencing data analysis.
+<p>Create an <strong>input</strong> folder, that will contain the pattern file and the sequencing output.</p>
 
- Required files:
-  Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
-  input directory (inDir). The patterns file should have a condition per row
-  with condition name, pattern (scan_for_mateches format), cutsite sequence and
-  non-genomic portion length, separated by tabulations.
+<h3>
+<a id="user-content-2-sequencing-data" class="anchor" href="#2-sequencing-data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>2. Sequencing data</h3>
 
- Mandatory arguments:
-  -i indir      Input directory.
+<p>Place the sequencing output in the <strong>input</strong> folder.</p>
+
+<ul>
+<li>If single-end sequencing, only one fastq.tar.gz file is expected (i.e., R1).</li>
+<li>If pair-end sequencing also a second fastq.tar.gz file is expected (i.e., R2).</li>
+</ul>
+
+<p>The sequencing output file name must follow the <a href="https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm">Illumina</a> format <code>expID_S*_L***_R*_001.fastq.gz</code>, where <code>expID</code> is the <em>experiment ID</em>, <code>S*</code> is the sample number, <code>L***</code> is the lane number, and <code>R*</code> indicates which fragment is contained.</p>
+
+<p>If multiple lane are available in the output, the file should be merged using the command <code>cat expID_S1_L*_R1_001.fastq.gz &gt; expID_S1_LALL_R1_001.fastq.gz</code>. If the fastq files were merged, remove the original ones.</p>
+
+<h3>
+<a id="user-content-3-pattern-file" class="anchor" href="#3-pattern-file" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>3. Pattern file</h3>
+
+<p>Create a pattern file called <code>pat_files</code> containing the condition name, pattern, cutsite sequence and linker length in nucleotides, per row and separated by tabulations.</p>
+
+<p>For example:</p>
+
+<pre><code> neg ^ 8...8 CATCAGAA AAGCTT 1...1000 $  AAGCTT  22
+ 1min    ^ 8...8 CATCATCC AAGCTT 1...1000 $  AAGCTT  22
+ 10min   ^ 8...8 GTCGTTCC AAGCTT 1...1000 $  AAGCTT  22
+ 2h  ^ 8...8 TGATGTCC AAGCTT 1...1000 $  AAGCTT  22
+</code></pre>
+
+<p>More information on the format of the pattern file is available in the README.</p>
+
+<p>The pattern information must be compatible with <code>scan_for_matches</code>, more information in the <a href="http://iubio.bio.indiana.edu/soft/molbio/pattern/scan_for_matches.readme">official README</a>.</p>
+
+<h2>
+<a id="user-content-select-settings" class="anchor" href="#select-settings" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Select settings</h2>
+
+<p>Before running the pipeline, a few settings should be prepared.</p>
+
+<pre><code>  -i indir      Input directory.
   -o outdir     Output directory. Created if not found.
   -e expID      Experiment ID.
-
- Optional arguments:
-  -h            Show this help page.
+  -h            Show the help page.
   -w            Perform every step of the pipeline without asking.
   -n            Negative present. Expected label: neg;
   -x            Remove X chromosome after alignment.
@@ -832,522 +856,10 @@ pre {
   -s chrLengths File with chromosome lengths. chr|len. No header.
 </code></pre>
 
-<h4>
-<a id="user-content-pipeline-steps" class="anchor" href="#pipeline-steps" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Pipeline steps</h4>
-
-<p>The steps performed by <code>main</code> are the following:</p>
-
-<ol>
-<li>Run <code>./quality_control.sh</code>.</li>
-<li>Run <code>./files_prepare.sh</code>
-</li>
-<li>Perform pattern filtering:
-
-<ul>
-<li>Count total reads and prepare <code>summary</code> file</li>
-<li>Run <code>./pattern_filtering.sh</code> per condition and update the <code>summary</code> file</li>
-</ul>
-</li>
-<li>Perform read alignment.
-
-<ul>
-<li>First, run <code>./reads_trim.sh</code> trim the pattern from the R1 reads (length specified in <code>pat_files</code>)</li>
-<li>Run <code>./reads_align.sh</code> and update summary with fraction of mapped reads</li>
-<li>Add the patterns to the SAM files (condition.linker.sam)</li>
-</ul>
-</li>
-<li>Filters the SAM file. (this step requires a specified <code>mapqthr</code> setting)
-
-<ul>
-<li>Run <code>./sam_filter</code>.</li>
-</ul>
-</li>
-<li>Prepare UMIs. If a <code>maskfile</code> was specified, UMIs are masked based on the information contained in such file.
-
-<ul>
-<li>Run <code>./umi_group</code> to group UMIs on the same position.</li>
-<li>Run <code>./pos2cutsite</code> to group UMIs on a cutsite</li>
-<li>Run <code>./umi_dedupl</code> to deduplicate UMIs.</li>
-</ul>
-</li>
-<li>Performs binning.
-
-<ul>
-<li>Run <code>./cs_bin</code> to bin the cutsites.</li>
-<li>Run <code>./umi_bin</code> to bin the UMIs.</li>
-</ul>
-</li>
-<li>Analyzes UMIs.
-
-<ul>
-<li>Run <code>./umi_plot</code> to generate analysis results as figures.</li>
-</ul>
-</li>
-</ol>
-
-<h4>
-<a id="user-content-output" class="anchor" href="#output" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Output</h4>
-
-<p>Description of different output files.</p>
-
-<h4>
-<a id="user-content-input" class="anchor" href="#input" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Input</h4>
-
-<p>At least two files are required: a sequencing platform output file (R1), and a <code>pat_files</code> file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.</p>
-
-<p>The <code>pat_files</code>, which is expected to be located in the input folder, contains a row per condition (as specified in the <code>-c conditions</code> argument). Every row contains the following tab-separated information: condition label, scan_for_matches pattern, cutsite sequence, pattern length. An example being the following:</p>
-
-<pre><code>neg ^ 8...8 CATCAGAA AAGCTT 1...1000 $  AAGCTT  22
-1min    ^ 8...8 CATCATCC AAGCTT 1...1000 $  AAGCTT  22
-10min   ^ 8...8 GTCGTTCC AAGCTT 1...1000 $  AAGCTT  22
-2h  ^ 8...8 TGATGTCC AAGCTT 1...1000 $  AAGCTT  22
-</code></pre>
-
 <h2>
-<a id="user-content-other-scripts" class="anchor" href="#other-scripts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Other scripts</h2>
+<a id="user-content-run" class="anchor" href="#run" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Run</h2>
 
-<h3>
-<a id="user-content-quality_controlsh" class="anchor" href="#quality_controlsh" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./quality_control.sh</h3>
+<p>To run the pipeline, open a terminal and go to the <code>gpseq-seq-gg</code> folder. Type <code>./main.sh -h</code> to see the help page and instructions on how to run the pipeline.</p>
 
-<p>This script is run by <code>main</code> during step 1. It performs a quality control with the <code>fastqc</code> tool.</p>
-
-<pre><code> usage: ./quality_control.sh [-h][-t threads] -o outDir -1 r1file [-2 r2file]
-
- Description:
-  Run FASTQC tool.
-
- Mandatory arguments:
-  -o outDir Output folder, created if not found.
-  -1 r1file R1 fastq file.
-
- Optional arguments:
-  -h        Show this help page.
-  -t threads    Number of threads for parallelization
-  -2 r2file R2 fastq file.
-</code></pre>
-
-<h3>
-<a id="user-content-files_preparesh" class="anchor" href="#files_preparesh" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./files_prepare.sh</h3>
-
-<p>This script is run by <code>main</code> during step 2. It decompresses the sequencing data and converts the generated files in different 'formats'.</p>
-
-<pre><code> usage: ./files_prepare.sh [-h][-t threads] -o outDir -1 r1file [-2 r2file]
-
- Description:
-  Run FASTQC tool.
-
- Mandatory arguments:
-  -o outDir Output folder, created if not found.
-  -1 r1file R1 fastq file.
-
- Optional arguments:
-  -h        Show this help page.
-  -t threads    Number of threads for parallelization
-  -2 r2file R2 fastq file.
-</code></pre>
-
-<p>The produced files are the following:</p>
-
-<ul>
-<li>
-<code>r1.fq</code> (and <code>r2.fq</code>): decompressed <strong>fastq</strong> file(s).</li>
-<li>
-<code>r2oneline.fq</code> (and <code>r2oneline.fq</code>): one read per line <strong>fastq</strong> file(s).</li>
-<li>
-<code>r1.fa</code> (and <code>r2.fa</code>): decompressed <strong>fasta</strong> file(s).</li>
-<li>
-<code>r1oneline.fa</code> (and <code>r2oneline.fa</code>): one read per line <strong>fasta</strong> file(s).</li>
-</ul>
-
-<h3>
-<a id="user-content-pattern_filter" class="anchor" href="#pattern_filter" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./pattern_filter</h3>
-
-<p>This script is run by <code>main</code> during step 3. It runs the <code>scan_for_matches</code> tool to select reads based on a pattern (e.g., containing barcodes), and divide them into different conditions.</p>
-
-<pre><code> usage: ./pattern_filter.sh [-h][-t threads] -i inDir -o outDir -p patFile
-
- Description:
-  Select reads based on the provided pattern by runnin scan_for_matches.
-
- Mandatory arguments:
-  -i inDir  Input directory.
-  -o outDir Output directory.
-  -p patFile    Pattern file.
-
- Optional arguments:
-  -h        Show this help page.
-  -t threads    Number of threads for parallelization.
-</code></pre>
-
-<p>The script will create a <code>filtered.r1.fa</code> and a <code>filtered.r1.fq</code> (and respective r2 files in case of paired-end sequencing) in the specified <code>outDir</code>. These files will contain the reads that match the specified pattern, retrieved from <code>r1.fa</code> and <code>r1.fq</code> (and r2...).</p>
-
-<p>Finally, the <code>summary</code> file is updated with the number and percentage of reads belonging to that condition.</p>
-
-<h3>
-<a id="user-content-reads_trimsh" class="anchor" href="#reads_trimsh" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./reads_trim.sh</h3>
-
-<p>This BASH script is run by <code>main</code> in step 4. It removes and stores the linkers from the R1 reads to a separate file.</p>
-
-<pre><code> usage: ./reads_trim.sh [-h][-t threads] -o outDir -c cond -p patFile
-
- Description:
-  Trim linker from reads.
-
- Mandatory arguments:
-  -o outDir     Output directory. Created if not found.
-  -c cond       Condition to analyze.
-  -p patFile    Pattern file.
-
- Optional arguments:
-  -h            Show this help page.
-  -t threads    Number of threads for parallelization.
-</code></pre>
-
-<h3>
-<a id="user-content-reads_alignsh" class="anchor" href="#reads_alignsh" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./reads_align.sh</h3>
-
-<p>This BASH script is run by <code>main</code> in step 4. It aligns the reads to a reference genome using either <code>bwa</code> or <code>bowtie2</code> and generates <code>bam</code> and <code>bai</code> files.</p>
-
-<pre><code> usage: ./reads_align.sh [-h][-t threads] -o outDir -c cond
-        [-p][-r ref][-a aln]
-
- Description:
-  Align reads using either bowtie2 or bwa mem.
-
- Mandatory arguments:
-  -o outDir     Output directory. Created if not found.
-  -c cond       Condition to analyze.
-
- Optional arguments:
-  -h            Show this help page.
-  -t threads    Number of threads for parallelization.
-  -p            Option for paired-end sequencing.
-  -r ref        Reference ref. Default: hg19.
-  -a aln        Aligner. Either 'bwa' or 'bowtie2'. Default: 'bwa'.
-  -i index      Path to BWA index.
-                Default: '$DATA'/BiCro-Resources/genomes/'$ref'bwt/'$ref'.fa
-</code></pre>
-
-<h3>
-<a id="user-content-sam_filterr" class="anchor" href="#sam_filterr" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./sam_filter.R</h3>
-
-<p>This R script is run by <code>main</code> in step 5. It filters a SAM file based on a variety of settings.</p>
-
-<pre><code>usage:  sam_filter.R [--help][--cutsite CUTSITE][--mapq-thr MAPQ-THR]
-        [--num-proc NUM-PROC][--suffix SUFFIX] dirpath experiment condition
-
-Filter alignment output.
-
-positional arguments:
-  dirpath           Experiment ccondition directory, contains UMI counts.
-  experiment        Experiment ID (e.g., TK26).
-  condition         Condition folder name (e.g., 400U2h).
-
-flags:
-  -h, --help        show this help message and exit
-
-optional arguments:
-  -cs, --cutsite CUTSITE        Cutsite sequence (e.g., for HindIII AAGCTT).
-                                [default: AAGCTT]
-  -mt, --mapq-thr MAPQ-THR      Mapping quality threshold.
-                                [default: 30]
-  -c, --num-proc NUM-PROC       Number of cores for parallel computation.
-                                [default: 1]
-  -s, --suffix SUFFIX           Suffix to be added to output files.
-                                [default: '']
-  -r, --rmChr RMCHR             Comma separated chromosomes to remove.
-                                [default: '']
-</code></pre>
-
-<p>Specifically, the filters do the following:</p>
-
-<ul>
-<li>Remove secondary alignments (based on SAM file flags).</li>
-<li>If paired-end sequencing, remove chimeras (where R1 and R2 are mapped on different chromosomes).</li>
-<li>Remove unmapped reads.</li>
-<li>If paired-end sequencing, remove R2 and keep only R1.</li>
-<li>Remove reads with a mapping quality lower than <code>mapqthr</code>.</li>
-</ul>
-
-<p>Then, the generated output consists of two files:</p>
-
-<ul>
-<li>
-<code>condition.filtered.sam.RData</code> contains the raw filtered SAM file as an RData structure.</li>
-<li>
-<code>condition.filtered.umi.pos.txt</code> is a table with the following columns: chromosome, 3'position, linker sequence, linker quality, read name. The position does not correspond to the SAM file one, but is instead shifted accordingly to the CIGAR string in the SAM file or to the length of the cutsite.</li>
-</ul>
-
-<h3>
-<a id="user-content-umi_grouppy" class="anchor" href="#umi_grouppy" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./umi_group.py</h3>
-
-<p>This Python script is run by <code>main</code> in step 6. It groups reads mapped on the same genomic locus.</p>
-
-<pre><code>usage: umi_group.py [-h] [--mask-file MF] dirpath expID cond umiLen
-
-Group UMIs based on their location.
-
-positional arguments:
-  dirpath         Experiment condition directory, contains UMI counts.
-  expID           Experiment ID (e.g., TK26).
-  cond            Condition folder name (e.g., 400U2h).
-  umiLen          Length of the UMIs in nt (e.g., 8).
-
-optional arguments:
-  -h, --help      show this help message and exit
-  --mask-file MF  File with regions to be masked.
-</code></pre>
-
-<p>The output consists of:</p>
-
-<ul>
-<li>
-<code>UMIpos.txt</code>, containing the following columns:
-
-<ul>
-<li>chromosome</li>
-<li>position</li>
-<li>space-separated UMIs</li>
-<li>quality strings</li>
-</ul>
-</li>
-<li>If a <code>maskfile</code> was specified, then an additional <code>UMIpos.all.txt</code> file will be generated, containing all the UMIs (also those withing masked regions).</li>
-</ul>
-
-<h3>
-<a id="user-content-pos2cutsiter" class="anchor" href="#pos2cutsiter" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./pos2cutsite.R</h3>
-
-<p>This R script is run by <code>main</code> in step 6. It groups reads mapped on the same cutsite. Every read is assigned to the closest cutsite. Then, a read is discarded and considered 'orphan', if the closest cutsite is more than bin_size/2 nt away from the aligned locus. In other words, a window of bin_size nt is built around every cutsite.</p>
-
-<p>The <code>pos2cutsite</code> step is not mandatory and, if the list of custite in the current reference genome is not known, the analysis can be performed anyway.</p>
-
-<pre><code>usage:  pos2cutsite.R [--help][--bin-size BIN-SIZE][--num-proc NUM-PROC]
-        [--suffix SUFFIX] dirpath experiment condition cutsites
-
-Convert genomic coordinate to cutsite.
-
-positional arguments:
-  dirpath           Experiment ccondition directory, contains UMI counts.
-  experiment        Experiment ID (e.g., TK26).
-  condition         Condition folder name (e.g., 400U2h).
-  cutsites          File containing the cutsite positions. (chr | pos)
-
-flags:
-  -h, --help        show this help message and exit
-
-optional arguments:
-  -i, --bin-size BIN-SIZE   Range size in bp around the cutsite.
-                            [default: 40]
-  -c, --num-proc NUM-PROC   Number of cores for parallel computation.
-                            [default: 1]
-  -s, --suffix SUFFIX       Suffix to be added to output files.
-                            [default: '']
-</code></pre>
-
-<h3>
-<a id="user-content-umi_deduplr" class="anchor" href="#umi_deduplr" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./umi_dedupl.R</h3>
-
-<p>This R script is run by <code>main</code> in step 6. It removes duplicated (through amplification) reads based on the UMIs.</p>
-
-<pre><code>usage:  umi_dedupl.R [--help][--cutsites CUTSITES][--platform PLATFORM]
-        [--cutoff CUTOFF][--emax EMAX][--eperc EPERC][--num-proc NUM-PROC]
-        [--suffix SUFFIX] dirpath experiment condition
-
-Deduplicate UMIs.
-
-positional arguments:
-  dirpath           Experiment condition directory, contains UMI counts.
-  experiment        Experiment ID (e.g., TK26).
-  condition         Condition folder name (e.g., 400U2h).
-
-flags:
-  -h, --help        show this help message and exit
-
-optional arguments:
-  -cs, --cutsites CUTSITES  Binary flag for cutsite assignment.
-                            1 for, and 0 for no, cutsites
-                            [default: 0]
-  -p, --platform PLATFORM   Sequencing platform identifier.
-                            [default: L]
-  -co, --cutoff CUTOFF      Probability cutoff,
-                            compared to the automatic for filtering.
-                            [default: 1]
-  -em, --emax EMAX          Maximum error probability for filtering.
-                            [default: 0.001]
-  -ep, --eperc EPERC        Maximum percentage of bases
-                            with emax error probability. [default: 20]
-  -c, --num-proc NUM-PROC   Number of cores for parallel computation.
-                            [default: 1]
-  -s, --suffix SUFFIX       Suffix to be added to output files.
-                            [default: '']
-</code></pre>
-
-<p>First, the length of the UMIs is checked for inconsistencies.</p>
-
-<p>Then, if a manual automatic <code>cutoff</code> higher than 0 was specified, a self-match probability filter is applied. Also, a single-base quality filter is applied that discards any read containing more than <code>eperc</code>% bases with error probability higher than or equal to <code>emax</code>.</p>
-
-<p>Finally, a strict unique operation is performed that removes duplciated UMIs merely based on their sequence.</p>
-
-<p>A figure report is generated (<code>umi_dedup.report.png</code>), showing the intensity of the detected UMI duplication.</p>
-
-<p>The output consists of a single file, either <code>UMIpos.unique.txt</code> or <code>UMIpos.unique.atcs.txt</code>. <code>atcs</code> stands for <strong>AT CutSite</strong>. In other words, the <code>pos2cutsite</code> step is not mandatory and, if the list of custite in the current reference genome is not known, the analysis can be performed anyway.</p>
-
-<p>The output text files contains the following columns:</p>
-
-<ul>
-<li>chromosome</li>
-<li>position</li>
-<li>space-separated UMI sequences</li>
-</ul>
-
-<h3>
-<a id="user-content-cs_binr" class="anchor" href="#cs_binr" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./cs_bin.R</h3>
-
-<p>This R script is run by <code>main</code> in step 7, and performs the cutsite binning. The output is a <code>cs_per_bin.bsize.bstep.RData</code> file containing the binned cutsite.</p>
-
-<pre><code>usage:  cs_bin.R [--help][-i BIN-SIZE][-t BIN-STEP]
-        [-c NUM-PROC][-s SUFFIX] dirpath cutsites chrlengths
-
-Bin cutsites.
-
-positional arguments:
-  dirpath                     Directory to which the binned cutsites will be saved.
-  cutsites                    File containing the cutsite positions. (chr | pos)
-  chrlengths                  File containing the chromosome lengths. (chr | len)
-
-flags:
-  -h, --help                  show this help message and exit
-
-optional arguments:
-  -i, --bin-size BIN-SIZE     Bin size in bp.
-                              [default: 1e+06]
-  -t, --bin-step BIN-STEP     Distance between the starting point of consecutive bins in bp.
-                              [default: 1e+05]
-  -c, --num-proc NUM-PROC     Number of cores for parallel computation.
-                              [default: 1]
-  -s, --suffix SUFFIX         Suffix to be added to output files.
-                              [default: ]
-</code></pre>
-
-<h3>
-<a id="user-content-umi_binr" class="anchor" href="#umi_binr" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./umi_bin.R</h3>
-
-<p>This R script is run by <code>main</code> in step 7, and performs the UMI binning. The output is a <code>experiment.umi_table.bsize.bstep.RData</code> file containing the binned cutsite. Also, a <code>experiment.condition.umi_table.bsize.bstep.tsv</code> file is saved in every condition folder.</p>
-
-<pre><code>usage:  umi_bin.R [-h][-c][-i BIN-SIZE][-t BIN-STEP][-p NUM-PROC]
-        [-s SUFFIX] dirpath experiment conditions chrlengths
-
-Bin UMIs.
-
-positional arguments:
-  dirpath         Experiment main directory, contains binned cutsites if available.
-  experiment      Experiment ID (e.g., TK26).
-  conditions      Comma-separated conditions (e.g., 400U2h,200U1h).
-  chrlengths      File containing the chromosome lengths. (chr | len)
-
-flags:
-  -h, --help           show this help message and exit
-  -c, --cutsites       Whether cutsites where used.
-
-optional arguments:
-  -i, --bin-size BIN-SIZE     Bin size in bp.
-                              [default: 1e+06]
-  -t, --bin-step BIN-STEP     Distance between the starting point of consecutive bins in bp.
-                              [default: 1e+05]
-  -p, --num-proc NUM-PROC     Number of cores for parallel computation.
-                              [default: 1]
-  -s, --suffix SUFFIX         Suffix to be added to output files.
-                              [default: ]
-
-</code></pre>
-
-<h3>
-<a id="user-content-umi_plotr" class="anchor" href="#umi_plotr" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>./umi_plot.R</h3>
-
-<p>This R script is executed by <code>main</code> in step 8. It generates the final plots of the UMI analysis. The actual plot code is stored in <code>umi_plot.functions</code>, which is imported and required by the script.</p>
-
-<pre><code>usage:  umi_plot.R [--] [--help] [--rmChrX] [--rmChrY] [--opts OPTS]
-    [--neg NEG] [--bin-size BIN-SIZE] [--bin-step BIN-STEP]
-    [--num-proc NUM-PROC] [--suffix SUFFIX]
-    dirpath experiment conditions cutsites chrlengths mask
-
-Generate UMI plots.
-
-positional arguments:
-dirpath       Experiment condition directory, contains UMI counts.
-experiment    Experiment ID (e.g., TK26).
-conditions    Comma-separated conditions (e.g., 400U2h,200U1h).
-cutsites      File containing the cutsite positions. (chr|pos)
-chrlengths    File containing the chromosome lengths. (chr|len)
-mask          File containing the masked regions.
-            (num|chr|start|end|type)
-
-flags:
--h, --help        show this help message and exit
--r, --rmChrX      Remove ChrX from the analysis
---rmChrY          Remove ChrY from the analysis
-
-optional arguments:
--x, --opts OPTS           RDS file containing argument values
--n, --neg NEG             Negative condition label.
-                        [default: '']
--i, --bin-size BIN-SIZE   Bin size in bp.
-                        [default: 1e+06]
--t, --bin-step BIN-STEP   Distance between the starting point
-                        of consecutive bins in bp.
-                        [default: 1e+05]
--c, --num-proc NUM-PROC   Number of cores for parallel computation.
-                        [default: 1]
--s, --suffix SUFFIX       Suffix to be added to output files.
-                        [default: '']
-</code></pre>
-
-<p>Generated plots:</p>
-
-<ul>
-<li>UMI distribution across condition.
-
-<ul>
-<li>Saved as <code>experiment.umi_distribution.suff.pdf</code>.</li>
-</ul>
-</li>
-<li>Sensed cutsites profile.
-
-<ul>
-<li>Saved as <code>experiment.sensed_cutsites.bsize.bstep.pdf</code>.</li>
-</ul>
-</li>
-<li>UMI count profiles.
-
-<ul>
-<li>Plots the absolute count (<code>umi_absolute</code>), mean (<code>umi_mean</code>), standard deviation (<code>umi_sd</code>), CV (<code>umi_cv</code>) and FF (<code>umi_FF</code>).</li>
-</ul>
-</li>
-<li>UMI probability profiles.
-
-<ul>
-<li>Plots the absolute probability (<code>p_umi_absolute</code>), mean (<code>p_umi_mean</code>), standard deviation (<code>p_umi_sd</code>), CV (<code>p_umi_cv</code>) and FF (<code>p_umi_FF</code>).</li>
-<li>If a negative condition is present, the <code>p_umi_mean</code> plot is generated also without the negative condition as <code>p_umi_mean.no_neg</code>
-</li>
-</ul>
-</li>
-<li>Difference profiles.
-
-<ul>
-<li>Plots the FF and CV difference between consecutive conditions (<code>deltaFF</code> and <code>deltaCV</code>) and between the first and last conditions (<code>deltaFF.extr</code> and <code>deltaCV.extr</code>).</li>
-</ul>
-</li>
-<li>Chromosome wide plots.
-
-<ul>
-<li>Plots the average FF and CV on chromosome-wide windows, as <code>chr_wide_ff</code> and <code>chr_wide_cv</code>.</li>
-</ul>
-</li>
-<li>Genomic overview.
-
-<ul>
-<li>Produces a genome overview of the read location (binned), normalized either per chromosome (<code>genome_view.chromo</code>) or globally per condition (<code>genome_view.global</code>).</li>
-</ul>
-</li>
-</ul>
+<p>The selected settings will be showed and a confirmation is required before the pipeline starts.</p>
 </article></body></html>

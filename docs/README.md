@@ -25,7 +25,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
 
  Optional arguments:
   -h            Show this help page.
-  -y            Perform every step of the pipeline without asking.
+  -w            Perform every step of the pipeline without asking.
   -n            Negative present. Expected label: neg;
   -x            Remove X chromosome after alignment.
   -y            Remove Y chromosome after alignment.
