@@ -31,14 +31,17 @@ function alignment() {
 		time $scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
+		if [ -n "$bwaIndex" -a "bwa" == "$aligner" ]; then
+			bwaOpt="-d $bwaIndex"
+		fi
 		if [ $numb_of_files -eq 2 ]; then
 			# Paired-end
 			time $scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
-				-c "$condition" -p -r $refGenome -a $aligner
+				-c "$condition" -p -r $refGenome -a $aligner $bwaOpt
 		else
 			# Single-end
 			time $scriptdir/reads_align.sh -t $threads -o "$cout/$condition" \
-				-c "$condition" -r $refGenome -a $aligner
+				-c "$condition" -r $refGenome -a $aligner $bwaOpt
 		fi
 
 		# Update summary -------------------------------------------------------
