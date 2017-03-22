@@ -807,7 +807,12 @@ pre {
 
 <p>The sequencing output file name must follow the <a href="https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm">Illumina</a> format <code>expID_S*_L***_R*_001.fastq.gz</code>, where <code>expID</code> is the <em>experiment ID</em>, <code>S*</code> is the sample number, <code>L***</code> is the lane number, and <code>R*</code> indicates which fragment is contained.</p>
 
-<p>If multiple lane are available in the output, the file should be merged using the command <code>cat expID_S1_L*_R1_001.fastq.gz &gt; expID_S1_LALL_R1_001.fastq.gz</code>. If the fastq files were merged, remove the original ones.</p>
+<p>If multiple lane are available in the output, the file should be merged using the command:</p>
+
+<pre><code>cat expID_S1_L*_R1_001.fastq.gz &gt; expID_S1_LALL_R1_001.fastq.gz
+</code></pre>
+
+<p>If the fastq files were merged, remove the original ones.</p>
 
 <h3>
 <a id="user-content-3-pattern-file" class="anchor" href="#3-pattern-file" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>3. Pattern file</h3>

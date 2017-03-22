@@ -16,7 +16,13 @@ Place the sequencing output in the **input** folder.
 
 The sequencing output file name must follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID*, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
 
-If multiple lane are available in the output, the file should be merged using the command `cat expID_S1_L*_R1_001.fastq.gz > expID_S1_LALL_R1_001.fastq.gz`. If the fastq files were merged, remove the original ones.
+If multiple lane are available in the output, the file should be merged using the command:
+
+```
+cat expID_S1_L*_R1_001.fastq.gz > expID_S1_LALL_R1_001.fastq.gz
+```
+
+If the fastq files were merged, remove the original ones.
 
 ### 3. Pattern file
 
