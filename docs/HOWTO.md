@@ -58,7 +58,7 @@ Before running the pipeline, a few settings should be prepared.
   -a aligner    Aligner. Either 'bwa' (default) or 'bowtie2'.
   -g refGenome  Path to reference genome file. Default: 'hg19'.
   -d bwaIndex   Path to BWA index file. Required if BWA is the selected aligner.
-  -q mapqThr    Mapping quality threshold. Default: 1.
+  -q mapqThr    Mapping quality threshold. Default: 30.
   -p platform   Sequencing platform. Default: 'L'.
   -u umilength  UMI sequence length. Default: 8.
   -r csRange    Range around cutsite for UMI assignment. Default: 40.
@@ -71,7 +71,7 @@ Before running the pipeline, a few settings should be prepared.
   -s chrLengths File with chromosome lengths. chr|len. No header.
 ```
 
-If the default value is compatible with your analysis, you don't need to specify that setting.
+You don't need to specify a setting if the default value is compatible with your analysis.
 
 ## Run
 
