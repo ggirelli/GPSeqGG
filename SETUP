@@ -1,9 +1,10 @@
 # REQUIRED SOFTWARE
 
-* bwa
-* bowtie2
-* fastqc
+* bwa v0.7.12-r1039
+* bowtie2 v2.2.6
+* fastqc v0.11.4
 * scan_for_matches
+* samtools v1.3.1
 
 On Ubuntu, run: `sudo apt install bwa bowtie2 fastqc`
 

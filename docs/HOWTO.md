@@ -16,7 +16,7 @@ Place the sequencing output in the **input** folder.
 
 The sequencing output file name must follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID*, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
 
-If multiple lane are available in the output, the file should be merged using the command:
+If multiple lanes are available in the output, the file should be merged using the command:
 
 ```
 cat expID_S1_L*_R1_001.fastq.gz > expID_S1_LALL_R1_001.fastq.gz
@@ -70,6 +70,8 @@ Before running the pipeline, a few settings should be prepared.
   -m maskFile   File with masked regions. Columns: id|chr|start|end. No header.
   -s chrLengths File with chromosome lengths. chr|len. No header.
 ```
+
+If the default value is compatible with your analysis, you don't need to specify that setting.
 
 ## Run
 
