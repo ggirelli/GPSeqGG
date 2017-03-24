@@ -189,7 +189,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			else
 				msg="Invalid -e option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n!!! $msg"
-				exi 1
+				exit 1
 			fi
 		;;
 		m)
@@ -199,7 +199,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			else
 				msg="Invalid -m option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n!!! $msg"
-				exi 1
+				exit 1
 			fi
 		;;
 		s)
@@ -209,7 +209,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			else
 				msg="Invalid -s option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n!!! $msg"
-				exi 1
+				exit 1
 			fi
 		;;
 	esac
