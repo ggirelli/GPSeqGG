@@ -18,3 +18,5 @@ TODO
 * Fix chromosome order during plot step.
 
 * Multiple global centrality metrics.
+
+* Escape condition name string from pattern file.
