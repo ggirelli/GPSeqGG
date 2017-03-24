@@ -34,3 +34,7 @@ Install them from within R with the `install.packages()` command.
 * sys
 
 Install them with `pip install`.
+
+# FOLDERS
+
+Need a ~/tmp folder for sorting.
