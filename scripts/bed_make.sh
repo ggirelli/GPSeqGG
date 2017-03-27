@@ -88,29 +88,25 @@ if [ -n "$csList" ]; then
 	(FNR==NR){
 		FS=OFS="\t";
 
-		k=$1"~"$2;
-		a[k]=$0"\t"NR;
+		a[$1"~"$2]=$0"\t"NR;
 		next
 	}
 
 	(23==$1){ $1="X" }
 	(24==$1){ $1="Y" }
-
 	{
 		FS=OFS="\t";
+		gsub(/ /, "", $1)
+		gsub(/ /, "", $2)
 		k="chr"$1"~"$2;
 	}
-	(k in a){
-		split(a[k], cs, "\t");
-		split($0, umi, "\t");
-		n=split(umi[3], umis, " ");
-		{
-			FS=OFS="";
-			print cs[1],"\t",cs[2],"\t",cs[2]+cslen-1,"\tcs_",cs[3],"\t",n;
-		}
+
+	(k in a) {
+		n=split($3, umi, " ")
+		print "chr"$1 OFS $2 OFS $2+cslen OFS n
 	}'
 	awk -v cslen=$csLen "$awkprogram" <(cat "$csList") \
-		<(cat "$out_dir/UMIpos.unique.atcs.txt" | tr -d " " | sort -nk 1) \
+		<(cat "$out_dir/UMIpos.unique.atcs.txt") \
 		>> "$out_dir/UMIpos.unique.atcs.bed"
 else
 	# Without cutsite assignment
