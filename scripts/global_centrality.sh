@@ -289,8 +289,8 @@ function sumsort_ranks() {
 	}'
 	echo -e "$ranked" | tr " " "\t" | awk "$awkprogram" | sort -k2,2n
 }
-sumsort_ranks "$ranked_rcs"  > "$outFile".rcs.txt
 sumsort_ranks "$ranked_crs"  > "$outFile".crs.txt
+sumsort_ranks "$ranked_rcs"  > "$outFile".rcs.txt
 
 # End --------------------------------------------------------------------------
 
