@@ -1,5 +1,7 @@
-v0.1.1
----
+v1.0.0
+===
+
+Released on 20170329 after extensive usage from external user.
 
 * Now using getopt in main.sh.
 * Moved code to `bin` subfolder.
@@ -22,6 +24,7 @@ v0.1.1
 * Added header line to bed file.
 * Moved barcode sequence option to pat_files.
 * Added global centrality script.
+* Added cumulative of ratio and ratio of cumulative approaches to global centrality script.
 
 v0.1.0
 ===

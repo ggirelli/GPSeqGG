@@ -1,4 +1,4 @@
-Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis
+Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis (v1.0.0)
 ===
 
 ## The `main` script
