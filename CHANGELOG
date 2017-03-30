@@ -1,3 +1,8 @@
+v1.0.1
+---
+
+* Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
+
 v1.0.0
 ===
 

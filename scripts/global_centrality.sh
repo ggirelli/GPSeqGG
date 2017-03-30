@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 1.0.0
+# Version: 1.0.1
 # Description: calculates global centrality metrics
 # 
 # ------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ function join_by { local IFS="$1"; shift; echo "$*"; }
 
 # Help string
 helps="
- usage: ./global_centrality.sh [-h] -c csList -o outFile [BEDFILE]...
+ usage: ./global_centrality.sh [-hrdf] -c csList -o outFile [BEDFILE]...
 
  Description:
   Calculate global centrality metrics.
@@ -35,14 +35,31 @@ helps="
 
  Optional arguments:
   -h		Show this help page.
+  -r		Perform intermediate ranking.
+  -d		Debug mode: write out intermediate results.
+  -f		Calculate global centrality relative to first condition (fixed).
 "
 
+# Default options
+interRank=false
+debug=false
+fixed=false
+
 # Parse options
-while getopts hc:o: opt "${bedfiles[@]}"; do
+while getopts hdrfc:o: opt "${bedfiles[@]}"; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
 			exit 0
+		;;
+		r)
+			interRank=true
+		;;
+		d)
+			debug=true
+		;;
+		f)
+			fixed=true
 		;;
 		c)
 			if [ -e $OPTARG ]; then
@@ -211,14 +228,16 @@ for chr in $(echo $(seq 1 22) X); do
 	matrix_rcs="$matrix_rcs$nrow_rcs\n"
 done
 
-# To save the matrix to file uncomment the following line
-#echo -e "$matrix_crs" > matrix.crs.tmp.tsv
-#echo -e "$matrix_rcs" > matrix.rcs.tmp.tsv
+if [ $debug ]; then
+	# To save the matrix to file uncomment the following line
+	echo -e "$matrix_crs" > matrix.crs.tmp.tsv
+	echo -e "$matrix_rcs" > matrix.rcs.tmp.tsv
+fi
 
 # Calculate ratio (B/A) between consecutive conditions -------------------------
 echo -e " · Normalizing matrices..."
 
-function normatrix() {
+function normatrix_prev() {
 	matrix=$1
 
 	awkprogram='@include "join";
@@ -236,43 +255,72 @@ function normatrix() {
 	}'
 	echo -e "$matrix" | awk "$awkprogram"
 }
-normatrix_crs=`normatrix "$matrix_crs"`
-normatrix_rcs=`normatrix "$matrix_rcs"`
+function normatrix_first() {
+	matrix=$1
 
-# To save the normalized matrix to file uncomment the following line
-#echo -e "$normatrix_crs" > normatrix.crs.tmp.tsv
-#echo -e "$normatrix_rcs" > normatrix.rcs.tmp.tsv
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        A=B-1;
+	        a[c]=$B/$2;
+	        c++;
+	    }
+
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+if [ $fixed ]; then
+	normatrix_crs=`normatrix_first "$matrix_crs"`
+	normatrix_rcs=`normatrix_first "$matrix_rcs"`
+else
+	normatrix_crs=`normatrix_prev "$matrix_crs"`
+	normatrix_rcs=`normatrix_prev "$matrix_rcs"`
+fi
+
+if [ $debug ]; then
+	# To save the normalized matrix to file uncomment the following line
+	echo -e "$normatrix_crs" > normatrix.crs.tmp.tsv
+	echo -e "$normatrix_rcs" > normatrix.rcs.tmp.tsv
+fi
 
 # Sort & rank ------------------------------------------------------------------
-echo -e " · Sorting and ranking..."
+if [ $interRank ]; then
+	echo -e " · Sorting and ranking..."
 
-function rank_normatrix() {
-	normatrix=$1
-	nbeds=$2
+	function rank_normatrix() {
+		normatrix=$1
+		nbeds=$2
 
-	ranked=""
-	for i in $(seq 2 $nbeds); do
-		ranking=`echo -e "$normatrix" | cut -f 1,$i | \
-			awk '{ print NR OFS $1 OFS $2 }' | sort -k3,3n | \
-			awk '{ print $1 OFS $2 OFS NR }' | sort -k1,1n | cut -d " " -f 2,3`
+		ranked=""
+		for i in $(seq 2 $nbeds); do
+			ranking=`echo -e "$normatrix" | cut -f 1,$i | \
+				awk '{ print NR OFS $1 OFS $2 }' | sort -k3,3n | \
+				awk '{ print $1 OFS $2 OFS NR }' | sort -k1,1n | \
+				cut -d " " -f 2,3`
 
-		if [ -z "$ranked" ]; then
-			ranked=$ranking
-		else
-			ranked=`join --nocheck-order <(echo -e "$ranked") \
-				<(echo -e "$ranking")`
-		fi
-	done
+			if [ -z "$ranked" ]; then
+				ranked=$ranking
+			else
+				ranked=`join --nocheck-order <(echo -e "$ranked") \
+					<(echo -e "$ranking")`
+			fi
+		done
 
-	echo -e "$ranked"
-}
-ranked_crs=`rank_normatrix "$normatrix_crs" ${#bedfiles[@]}`
-ranked_rcs=`rank_normatrix "$normatrix_rcs" ${#bedfiles[@]}`
+		echo -e "$ranked"
+	}
+	ranked_crs=`rank_normatrix "$normatrix_crs" ${#bedfiles[@]}`
+	ranked_rcs=`rank_normatrix "$normatrix_rcs" ${#bedfiles[@]}`
 
-
-# To save the conditional rankings to file uncomment the following line
-#echo -e "$ranked_crs" > rankings.crs.tmp.tsv
-#echo -e "$ranked_rcs" > rankings.rcs.tmp.tsv
+	if [ $debug ]; then
+		# To save the conditional rankings to file uncomment the following line
+		echo -e "$ranked_crs" > rankings.crs.tmp.tsv
+		echo -e "$ranked_rcs" > rankings.rcs.tmp.tsv
+	fi
+fi
 
 # Sum rankings & sort ----------------------------------------------------------
 echo -e " · Summing and sorting..."
