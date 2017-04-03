@@ -84,16 +84,120 @@ done
 
 if $byName; then
 	# Merge by name ------------------------------------------------------------
-	echo -e " > Merging by name..."	
+	echo -e " > Merging by name..."
+
+	# Merge files
+	mergePrg='
+	BEGIN{
+		OFS=FS="\t";
+	}
+
+	(FNR==NR){
+		a[$4]=$0;
+		nFiles=NF-4;
+		next;
+	}
+
+	{
+		if ($4 in a){
+			a[$4] = a[$4] OFS $5;
+		} else {
+			a[$4] = $1 OFS $2 OFS $3 OFS $4;
+			i = 0;
+			while ( i < nFiles ) {
+				a[$4] = a[$4] OFS 0;
+				i++;
+			}
+			a[$4] = a[$4] OFS $5;
+		}
+	}
+
+	END{
+		for ( k in a ) {
+			n=split(a[k], s, OFS);
+			for ( i = 0; i < nFiles+5-n; i++ )
+				a[k] = a[k] OFS 0;
+			print a[k];
+		}
+	}'
+
+	# Cycle through files and merge them
+	merged=""
+	for bf in ${bedfiles[@]}; do
+		if [ -z "$merged" ]; then
+			echo -e " > Reading $bf..."
+			merged=`cat $bf | sed 1d`
+		else
+			echo -e " > Reading $bf..."
+			bf=`cat $bf | sed 1d`
+			merged=`awk "$mergePrg" <(echo -e "$merged") <(echo -e "$bf")`
+		fi
+	done
+
+	# Output
+	echo -e " > Writing output..."
+	echo -e "$merged" | sort -k1.4,2 > $outFile
 else
 	# Merge by location --------------------------------------------------------
 	echo -e " > Merging by location..."
 
-	awkprogram='
-	(FNR==NR){
-		a[]
+	# Add chr~start~end column
+	addIDprg='{
+		OFS=FS="\t";
+		print $1"~"$2"~"$3 OFS $0
+	}'
+
+	# Merge files
+	mergePrg='
+	BEGIN{
+		OFS=FS="\t";
 	}
-	'
+
+	(FNR==NR){
+		a[$1]=$0;
+		next;
+	}
+
+	{
+		if ($1 in a){
+			a[$1] = a[$1] OFS $6;
+		} else {
+			a[$1] = $1 OFS $2 OFS $3 OFS $4 OFS $5;
+			i = 0;
+			while ( i < nFiles ) {
+				a[$1] = a[$1] OFS 0;
+				i++;
+			}
+			a[$1] = a[$1] OFS $6;
+		}
+	}
+
+	END{
+		for ( k in a ) {
+			n=split(a[k], s, OFS);
+			for ( i = 0; i < nFiles+5+1-n; i++ )
+				a[k] = a[k] OFS 0;
+			print a[k];
+		}
+	}'
+
+	# Cycle through files and merge them
+	merged=""
+	for bfi in $(seq 0 `bc <<< "${#bedfiles[@]}-1"`); do
+		bf=${bedfiles[$bfi]}
+		if [ -z "$merged" ]; then
+			echo -e " > Reading $bf..."
+			merged=`cat $bf | sed 1d | awk "$addIDprg"`
+		else
+			echo -e " > Reading $bf..."
+			bf=`cat $bf | sed 1d | awk "$addIDprg"`
+			merged=`awk -v nFiles=$bfi "$mergePrg" <(echo -e "$merged") <(echo -e "$bf")`
+		fi
+	done
+
+	# Output
+	echo -e " > Writing output..."
+	echo -e "$merged" | cut -f 2- | sort -k1.4,2
 fi
 
 # End --------------------------------------------------------------------------
