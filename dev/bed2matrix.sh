@@ -62,10 +62,16 @@ for bf in $*; do
 		bedfiles+=("$bf")
 	else
 		msg="!!! Invalid bedfile, file not found.\n    File: $bf"
-		echo -e " $helps<n$msg"
+		echo -e " $helps\n$msg"
 		exit 1
 	fi
 done
+
+if [ 0 -eq ${#bedfiles[@]} ]; then
+	msg="!!! No bedfiles provided."
+	echo -e "$helps\n$msg"
+	exit 1
+fi
 
 # TEST =========================================================================
 

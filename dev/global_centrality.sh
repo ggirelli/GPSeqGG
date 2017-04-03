@@ -162,14 +162,20 @@ for chr in ${chrlist[@]}; do
 	
 	# Calculate conditional probability per cutsite
 	conditional_p='{ OFS=FS=" "; OFMT="%.12f"
+
 		split(Ts, T, ",");
-		pconds=""
-		for ( B=2; B <= NF; B++ ) {
+
+		B=2;
+		A=1;
+		pconds=($B/T[B] + 1-$A/T[A] + ($B+T[A]-$A)/(T[B]+T[A]))/(1-$A/T[A]);
+
+		for ( B=3; B <= NF; B++ ) {
 			A=B-1;
-			print $A OFS T[A] OFS $B OFS T[B]
+
 			pcond=($B/T[B] + 1-$A/T[A] + ($B+T[A]-$A)/(T[B]+T[A]))/(1-$A/T[A]);
 			pconds=pconds OFS pcond;
 		}
+
 		print pconds;
 	}'
 	cstots=`IFS=","; shift; echo "${tots[*]}";`
@@ -196,13 +202,17 @@ for chr in ${chrlist[@]}; do
 	
 	# Calculate Bayesian probability per cutsite
 	bayes_p='{ OFS=FS=" "; OFMT="%.12f"
+
 		sum=0;
 		for ( i=1; i <= NF; i++ )
 			sum=sum+$i;
+
 		if ( 0 == sum ) next;
+
 		p=$1/sum;
 		for ( i=2; i <= NF; i++ )
 			p=p OFS $i/sum;
+
 		print p;
 	}'
 	pbays=`echo -e "$counts" | awk "$bayes_p"`
@@ -218,28 +228,35 @@ for chr in ${chrlist[@]}; do
 	mus=()
 	ffs=()
 	cvs=()
-	for i in $(seq 1 ${#probs[@]}); do
+	for i in $(seq 1 ${#tots[@]}); do
 		sigma=`echo -e "$counts" | datamash sstdev $i`
 		mu=`echo -e "$counts" | datamash mean $i`
 		ffs+=(`bc -l <<< "$sigma^2 / $mu" | sed 's/^\./0./'`)
 		cvs+=(`bc -l <<< "$sigma / $mu" | sed 's/^\./0./'`)
 		sigmas+=($sigma)
-		mus+=(mu)
+		mus+=($mu)
 	done
 
 	# Calculate exclusivity ----------------------------------------------------
 	
 	# Calculate exclusivity per cutsite
 	exclu_p='{ OFS=FS=" "; OFMT="%.12f"
+
 		p=$1;
-		for ( B=2; B <= NF; B++ )
+
+		for ( B=2; B <= NF; B++ ) {
 			A=B-1;
+
 			diff=$B-$A;
+
 			if ( diff < 0 ) { diff=0; }
+
 			p=p OFS diff;
+		}
+
 		print p;
 	}'
-	pexs=`echo -e "$counts" | awk "$exclu_p"`
+	pexs=`echo -e "$probs" | awk "$exclu_p"`
 
 	# Identify maximum per cutsite
 	cexs=`echo -e "$pbays" | awk "$maxi_col"`
