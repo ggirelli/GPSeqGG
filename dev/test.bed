@@ -1,4 +1,0 @@
-#track name="test file"
-chr1	0	1	loc_1	0
-chr1	1000	2000	loc_2	20
-chr3	25000	100000	loc_3	1

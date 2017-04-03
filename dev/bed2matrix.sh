@@ -24,7 +24,7 @@ function join_by { local IFS="$1"; shift; echo "$*"; }
 
 # Help string
 helps="
- usage: ./bed2matrix.sh [-hn] -o outFile [BEDFILEs]...
+ usage: ./bed2matrix.sh [-hn] [BEDFILEs]...
 
  Description:
   Merge bedfiles into a matrix. The score column is merged based on the positon
@@ -32,7 +32,6 @@ helps="
 
  Mandatory arguments:
   BEDFILEs	Bed file(s). Expected to be ordered per condition.
-  -o outFile	Output matrix file.
 
  Optional arguments:
   -h		Show this help page.
@@ -43,7 +42,7 @@ helps="
 byName=false
 
 # Parse options
-while getopts hno: opt "${bedfiles[@]}"; do
+while getopts hn opt "${bedfiles[@]}"; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
@@ -52,18 +51,8 @@ while getopts hno: opt "${bedfiles[@]}"; do
 		n)
 			byName=true
 		;;
-		o)
-			outFile=$OPTARG
-		;;
 	esac
 done
-
-# Check mandatory options
-if [ -z "$outFile" ]; then
-	msg="!!! Missing mandatory -o option."
-	echo -e "$helps\n$msg"
-	exit
-fi
 
 # Read bedfile paths
 shift $(($OPTIND - 1))
@@ -84,7 +73,6 @@ done
 
 if $byName; then
 	# Merge by name ------------------------------------------------------------
-	echo -e " > Merging by name..."
 
 	# Merge files
 	mergePrg='
@@ -125,21 +113,17 @@ if $byName; then
 	merged=""
 	for bf in ${bedfiles[@]}; do
 		if [ -z "$merged" ]; then
-			echo -e " > Reading $bf..."
 			merged=`cat $bf | sed 1d`
 		else
-			echo -e " > Reading $bf..."
 			bf=`cat $bf | sed 1d`
 			merged=`awk "$mergePrg" <(echo -e "$merged") <(echo -e "$bf")`
 		fi
 	done
 
 	# Output
-	echo -e " > Writing output..."
-	echo -e "$merged" | sort -k1.4,2 > $outFile
+	echo -e "$merged" | sort -k1.4,2
 else
 	# Merge by location --------------------------------------------------------
-	echo -e " > Merging by location..."
 
 	# Add chr~start~end column
 	addIDprg='{
@@ -186,17 +170,14 @@ else
 	for bfi in $(seq 0 `bc <<< "${#bedfiles[@]}-1"`); do
 		bf=${bedfiles[$bfi]}
 		if [ -z "$merged" ]; then
-			echo -e " > Reading $bf..."
 			merged=`cat $bf | sed 1d | awk "$addIDprg"`
 		else
-			echo -e " > Reading $bf..."
 			bf=`cat $bf | sed 1d | awk "$addIDprg"`
 			merged=`awk -v nFiles=$bfi "$mergePrg" <(echo -e "$merged") <(echo -e "$bf")`
 		fi
 	done
 
 	# Output
-	echo -e " > Writing output..."
 	echo -e "$merged" | cut -f 2- | sort -k1.4,2
 fi
 
