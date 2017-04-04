@@ -1,3 +1,4 @@
 * Test global centrality (with merged bed files) while removing empty locations as they might change the distribution due to the random reads sampling represented by the sequencing process. The metrics that appear, by manual inspection, to be more sensitive to such addition (of empty locations) are the variable-based ones (i.e., Fano factor, coefficient of variation, variance,...).
+
 * Implement reads reshuffling either on the merged bed and/or on the single bed files. Save the shuffled ones separately for future runs. Store the seed used for the random number generation. Remember that reads can be removed only from non-empty locations, but they can be placed back on any location (even the original one). Iterate at least 100 times per percentage of reads to remove.
 * Calculate metrics on every reshuffled set. Then, compare the same metric on the different iterations against the original one using the Kendall tau distance.

@@ -229,8 +229,8 @@ for chr in ${chrlist[@]}; do
 	ffs=()
 	cvs=()
 	for i in $(seq 1 ${#tots[@]}); do
-		sigma=`echo -e "$counts" | datamash sstdev $i`
-		mu=`echo -e "$counts" | datamash mean $i`
+		sigma=`echo -e "$counts" | awk -v i=$i '$i != 0' | datamash sstdev $i`
+		mu=`echo -e "$counts" | awk -v i=$i '$i != 0' | datamash mean $i`
 		ffs+=(`bc -l <<< "$sigma^2 / $mu" | sed 's/^\./0./'`)
 		cvs+=(`bc -l <<< "$sigma / $mu" | sed 's/^\./0./'`)
 		sigmas+=($sigma)
