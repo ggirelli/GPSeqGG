@@ -144,6 +144,7 @@ for chr in $(echo $(seq 1 22) X); do
 	# cps: Conditional ProbabilitieS
 	# crs: Cumulative of the RatioS
 	# rcs: Ratio of the CumulativeS
+	# bay: BAYesian approach
 	# std: STandard Deviation
 	# ffs: Fano FactorS
 	# cos: Coefficients Of Variation
@@ -151,6 +152,7 @@ for chr in $(echo $(seq 1 22) X); do
 	pcs=()
 	crs=(0)
 	rcs=(0)
+	bay=()
 	std=()
 	ffs=()
 	cos=()
@@ -247,6 +249,13 @@ for chr in $(echo $(seq 1 22) X); do
 
 		# Coefficient of variation
 		cov+=(`bc -l <<< "$sigma / $mu"`)		
+	done
+
+	# Bayesian probability -----------------------------------------------------
+	tot_over_conds=`echo "${counts[@]}" | paste -sd+ | bc`
+	for c in ${counts[@]}; do
+		r=`bc -l <<< "$c / $tot_over_conds"`
+		bay+=($r)
 	done
 
 	# Remove starting value (0)
@@ -391,7 +400,7 @@ function logmatrix_first() {
 }
 function imax() {
 	matrix=$1
-	awkprogram='{
+	awkprogram='{ if ( 0 == NF ) { next; }
 		maxi=0
 		maxv=0
 		for ( i=2; i <= NF; i++ ) {
