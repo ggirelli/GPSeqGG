@@ -252,7 +252,7 @@ for chr in $(echo $(seq 1 22) X); do
 	done
 
 	# Bayesian probability -----------------------------------------------------
-	tot_over_conds=`echo "${counts[@]}" | paste -sd+ | bc`
+	tot_over_conds=`echo "${counts[@]}" | tr ' ' '+' | bc`
 	for c in ${counts[@]}; do
 		r=`bc -l <<< "$c / $tot_over_conds"`
 		bay+=($r)
@@ -267,6 +267,7 @@ for chr in $(echo $(seq 1 22) X); do
 	merged_crs=`join_by " " "${crs[@]}"`
 	merged_rcs=`join_by " " "${rcs[@]}"`
 	merged_pcs=`join_by " " "${pcs[@]}"`
+	merged_bay=`join_by " " "${bay[@]}"`
 	merged_std=`join_by " " "${std[@]}"`
 	merged_ffs=`join_by " " "${ffs[@]}"`
 	merged_cov=`join_by " " "${cov[@]}"`
@@ -276,6 +277,7 @@ for chr in $(echo $(seq 1 22) X); do
 	nrow_crs=`echo "$chr $merged_crs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 	nrow_rcs=`echo "$chr $merged_rcs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 	nrow_pcs=`echo "$chr $merged_pcs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_bay=`echo "$chr $merged_bay" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 	nrow_std=`echo "$chr $merged_std" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 	nrow_ffs=`echo "$chr $merged_ffs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 	nrow_cov=`echo "$chr $merged_cov" | sed "s/^ //" | tr -s " " | tr " " "\t"`
@@ -285,6 +287,7 @@ for chr in $(echo $(seq 1 22) X); do
 	matrix_crs="$matrix_crs$nrow_crs\n"
 	matrix_rcs="$matrix_rcs$nrow_rcs\n"
 	matrix_pcs="$matrix_pcs$nrow_pcs\n"
+	matrix_bay="$matrix_bay$nrow_bay\n"
 	matrix_std="$matrix_std$nrow_std\n"
 	matrix_ffs="$matrix_ffs$nrow_ffs\n"
 	matrix_cov="$matrix_cov$nrow_cov\n"
@@ -295,6 +298,7 @@ if $debug; then
 	echo -e "$matrix_crs" > $outFile".crs.matrix.tmp.tsv"
 	echo -e "$matrix_rcs" > $outFile".rcs.matrix.tmp.tsv"
 	echo -e "$matrix_pcs" > $outFile".pcs.matrix.tmp.tsv"
+	echo -e "$matrix_bay" > $outFile".bay.matrix.tmp.tsv"
 	echo -e "$matrix_std" > $outFile".std.matrix.tmp.tsv"
 	echo -e "$matrix_ffs" > $outFile".ffs.matrix.tmp.tsv"
 	echo -e "$matrix_cov" > $outFile".cov.matrix.tmp.tsv"
@@ -419,6 +423,7 @@ normatrix_prs=`normatrix_prev "$matrix_prs"`
 normatrix_prs_fixed=`normatrix_first "$matrix_prs"`
 
 imatrix_pcs=`imax "$matrix_pcs"`
+imatrix_bay=`imax "$matrix_bay"`
 
 normatrix_crs=`normatrix_prev "$matrix_crs"`
 normatrix_crs_fixed=`normatrix_first "$matrix_crs"`
@@ -441,6 +446,7 @@ if $debug; then
 	echo -e "$normatrix_prs" > $outFile".prs.normatrix"
 	echo -e "$normatrix_prs_fixed" > $outFile".prs.normatrix.fixed"
 	echo -e "$imatrix_pcs" > $outFile"pcs.imatrix.fixed"
+	echo -e "$imatrix_bay" > $outFile"bay.imatrix.fixed"
 	echo -e "$normatrix_crs" > $outFile".crs.normatrix"
 	echo -e "$normatrix_crs_fixed" > $outFile".crs.normatrix.fixed"
 	echo -e "$normatrix_crs_2p" > $outFile".crs.normatrix.2p"
@@ -475,6 +481,7 @@ ranked_prs_2p=`sumsort_ranks "$normatrix_prs_2p"`
 ranked_prs=`sumsort_ranks "$normatrix_prs"`
 ranked_prs_fixed=`sumsort_ranks "$normatrix_prs_fixed"`
 ranked_pcs=`sumsort_ranks "$imatrix_pcs"`
+ranked_bay=`sumsort_ranks "$imatrix_bay"`
 ranked_crs=`sumsort_ranks "$normatrix_crs"`
 ranked_crs_fixed=`sumsort_ranks "$normatrix_crs_fixed"`
 ranked_crs_2p=`sumsort_ranks "$normatrix_crs_2p"`
@@ -492,6 +499,7 @@ if $debug; then
 	echo -e "$ranked_prs" > $outFile".prs.tmp.txt"
 	echo -e "$ranked_prs_fixed" > $outFile".prs.fixed.tmp.txt"
 	echo -e "$ranked_pcs" > $outFile".pcs.tmp.txt"
+	echo -e "$ranked_bay" > $outFile".bay.tmp.txt"
 	echo -e "$ranked_crs" > $outFile".crs.tmp.txt"
 	echo -e "$ranked_crs_fixed" > $outFile".crs.fixed.tmp.txt"
 	echo -e "$ranked_crs_2p" > $outFile".crs.2p.tmp.txt"
@@ -509,7 +517,7 @@ fi
 echo -e " · Recapping..."
 
 # Print header
-header="P2p\tPg\tPgf\tCR2p\tCRg\tCRgf\tRC2p\tRCgf\tCond\tV2p\tVgf"
+header="P2p\tPg\tPgf\tCR2p\tCRg\tCRgf\tRC2p\tRCgf\tCond\tBay\tV2p\tVgf"
 header=$header"\tFF2p\tFFgf\tCV2p\tCVgf"
 echo -e $header > $outFile".recap.txt"
 
@@ -524,6 +532,7 @@ paste \
 	<(echo -e "$ranked_rcs_2p" | cut -f 1) \
 	<(echo -e "$ranked_rcs_fixed" | cut -f 1) \
 	<(echo -e "$ranked_pcs" | cut -f 1) \
+	<(echo -e "$ranked_bay" | cut -f 1) \
 	<(echo -e "$ranked_std_2p" | cut -f 1) \
 	<(echo -e "$ranked_std_fixed" | cut -f 1) \
 	<(echo -e "$ranked_ffs_2p" | cut -f 1) \

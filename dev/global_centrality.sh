@@ -18,36 +18,41 @@ export LC_ALL=C
 # DEPENDENCIES =================================================================
 
 function join_by { local IFS="$1"; shift; echo "$*"; }
-IFS=', ' read -r -a array <<< "$string"
 
 # INPUT ========================================================================
 
 # Help string
 helps="
- usage: ./global_centrality.sh [-hd] -c csList -i mergedBed -o outFile
+ usage: ./global_centrality.sh [-hrdf] -c csList -o outFile [BEDFILE]...
 
  Description:
   Calculate global centrality metrics.
 
  Mandatory arguments:
-  -c csList		Cutsite list file.
-  -i mergedBed	Merged bed file(s). Expected to be ordered per condition.
-  -o outFile	Output file prefix. (e.g., TK51.global_centrality)
+  BEDFILE	Bed file(s). Expected to be ordered per condition.
+  -c csList	Cutsite list file.
+  -o outFile	Output matrix file.
 
  Optional arguments:
-  -h	Show this help page.
-  -d	Debug mode: write out intermediate results.
+  -h		Show this help page.
+  -r		Perform intermediate ranking.
+  -d		Debug mode: write out intermediate results.
 "
 
 # Default options
+interRank=false
 debug=false
+fixed=false
 
 # Parse options
-while getopts hdc:i:o: opt "${bedfiles[@]}"; do
+while getopts hdrfc:o: opt "${bedfiles[@]}"; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
 			exit 0
+		;;
+		r)
+			interRank=true
 		;;
 		d)
 			debug=true
@@ -57,15 +62,6 @@ while getopts hdc:i:o: opt "${bedfiles[@]}"; do
 				csList=$OPTARG
 			else
 				msg="!!! Invalid -c option, file not found.\n    File: $OPTARG"
-				echo -e "$helps\n$msg"
-				exit 1
-			fi
-		;;
-		i)
-			if [ -e $OPTARG ]; then
-				inFile=$OPTARG
-			else
-				msg="!!! Invalid -i option, file not found.\n    File: $OPTARG"
 				echo -e "$helps\n$msg"
 				exit 1
 			fi
@@ -82,356 +78,413 @@ if [ -z "$csList" ]; then
 	echo -e "$helps\n$msg"
 	exit
 fi
-if [ -z "$inFile" ]; then
-	msg="!!! Missing mandatory -i option."
-	echo -e "$helps\n$msg"
-	exit
-fi
 if [ -z "$outFile" ]; then
 	msg="!!! Missing mandatory -o option."
 	echo -e "$helps\n$msg"
 	exit
 fi
 
+# Read bedfile paths
+shift $(($OPTIND - 1))
+bedfiles=()
+for bf in $*; do
+	if [ -e $bf ]; then
+		bedfiles+=("$bf")
+	else
+		msg="!!! Invalid bedfile, file not found.\n    File: $bf"
+		echo -e " $helps\n$msg"
+		exit 1
+	fi
+done
+
 # TEST =========================================================================
+
+if [ 0 -eq 1 ]; then
+	bedfiles=()
+	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t2\nchr3\t0\t0\t0\t1")
+	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t4\nchr3\t0\t0\t0\t3")
+	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t8\nchr3\t0\t0\t0\t9")
+
+	outFile="output"
+
+	for i in $(seq 0 `bc <<< "${#bedfiles[@]} - 1"`); do
+		echo -e ${bedfiles[$i]} > c$i.tmp
+		bedfiles[$i]="c$i.tmp"
+		echo -e "\n"${bedfiles[$i]}
+		cat ${bedfiles[$i]}
+	done
+fi
 
 # RUN ==========================================================================
 
-# Identify available chromosomes
-IFS=' ' read -r -a chrlist <<< `cut -f 1 $inFile | sort | uniq`
-echo -e " · Found ${#chrlist[@]} chromosomes."
+# Generate cumulative probability distribution matrix --------------------------
+# One chromosome per row, one condition per column.
+echo -e " · Preparing matrices..."
 
-# Default matrices
-m_sums=""
-m_tots=""
-m_probs=""
-m_cors=""
-m_rocs=""
-m_cons=""
-m_bays=""
-m_sigmas=""
-m_ffs=""
-m_cvs=""
-m_exs=""
+# Default empty matrix
+matrix_crs=""
+matrix_rcs=""
 
-# Iterate over chromosomes
-for chr in ${chrlist[@]}; do
+# Cycle over chromosomes
+for chr in $(echo $(seq 1 22) X); do
+	chr="chr$chr"
 	echo -e " >>> Working on $chr..."
 
 	# Number of cutsite in the chromosome
 	ncs=`cat $csList | awk -v chr=$chr '$1 == chr' | wc -l`
 
-	# Sum columns awk program
-	colSumPrg='@include "join"
-	{
-		for (i = 1; i <= NF; i++ )
-			a[i] = a[i] + $i;
-	}
-	END {
-		print join(a, 1, length(a));
-	}'
+	if [ 0 -eq $ncs ]; then
+		msg="!!! No cutsites found in $chr.\n    Please re-run without $chr."
+		echo -e "$msg"
+		exit 1
+	fi
 
-	# Select and sum counts for current chromosome
-	IFS=' ' read -r -a tots <<< \
-		`cat $inFile | cut -f 5- | awk "$colSumPrg"`
-	counts=`cat $inFile | awk -v chr=$chr '$1 == chr' | cut -f 5-`
-	IFS=' ' read -r -a sums <<< \
-		`echo -e "$counts" | awk "$colSumPrg"`
-
-	# Calculate single-condition probability -----------------------------------
-	probs=()
-	for i in $(seq 0 `bc <<< "${#tots[@]}-1"`); do
-		probs+=(`bc -l <<< "${sums[$i]}/${tots[$i]}/$ncs" | sed 's/^\./0./'`)
-	done
-
-	# Calculate cumulative of ratios (CoR) probability -------------------------
-	cors=()
-	for i in $(seq 0 `bc <<< "${#probs[@]}-1"`); do
-		cors+=(`echo ${probs[@]:0:$i} | tr " " "+" | bc -l | sed 's/^\./0./'`)
-	done
-
-	# Calculate ratio of cumulatives (RoC) probability -------------------------
-	rocs=()
-	for i in $(seq 1 `bc <<< "${#probs[@]}"`); do
-		rocn=`echo ${sums[@]:0:$i} | tr " " "+" | bc -l`
-		roct=`echo ${tots[@]:0:$i} | tr " " "+" | bc -l`
-		rocs+=(`bc -l <<< "$rocn/$roct/$ncs" | sed 's/^\./0./'`)
-	done
-
-	# Calculate conditional probability ----------------------------------------
-	
-	# Calculate conditional probability per cutsite
-	conditional_p='{ OFS=FS=" "; OFMT="%.12f"
-
-		split(Ts, T, ",");
-
-		B=2;
-		A=1;
-		pconds=($B/T[B] + 1-$A/T[A] + ($B+T[A]-$A)/(T[B]+T[A]))/(1-$A/T[A]);
-
-		for ( B=3; B <= NF; B++ ) {
-			A=B-1;
-
-			pcond=($B/T[B] + 1-$A/T[A] + ($B+T[A]-$A)/(T[B]+T[A]))/(1-$A/T[A]);
-			pconds=pconds OFS pcond;
-		}
-
-		print pconds;
-	}'
-	cstots=`IFS=","; shift; echo "${tots[*]}";`
-	pcons=`echo -e "$counts" | awk -v Ts="$cstots" "$conditional_p"`
-
-	# Identify maximum per cutsite
-	maxi_col='{ OFS=FS=" ";
-		maxi=0;
-		maxp=0;
-		for ( i = 1; i <= NF; i++ ) {
-			if ( $i > maxp ) {
-				maxp=$i;
-				maxi=i;
-			}
-		}
-		print maxi;
-	}'
-	ccons=`echo -e "$pcons" | awk "$maxi_col"`
-
-	# Average over region
-	ccon=`echo -e "$ccons" | datamash mean 1`
-
-	# Calculate Bayes probability ----------------------------------------------
-	
-	# Calculate Bayesian probability per cutsite
-	bayes_p='{ OFS=FS=" "; OFMT="%.12f"
-
-		sum=0;
-		for ( i=1; i <= NF; i++ )
-			sum=sum+$i;
-
-		if ( 0 == sum ) next;
-
-		p=$1/sum;
-		for ( i=2; i <= NF; i++ )
-			p=p OFS $i/sum;
-
-		print p;
-	}'
-	pbays=`echo -e "$counts" | awk "$bayes_p"`
-	
-	# Identify maximum per cutsite
-	cbays=`echo -e "$pbays" | awk "$maxi_col"`
-
-	# Average over region
-	cbay=`echo -e "$ccons" | datamash mean 1`
-
-	# Calculate variability-based metrics --------------------------------------
-	sigmas=()
-	mus=()
+	# Array of normalized counts
+	# prs: ProbabilitieS
+	# crs: Cumulative of the RatioS
+	# rcs: Ratio of the CumulativeS
+	# std: STandard Deviation
+	# ffs: Fano FactorS
+	# cos: Coefficients Of Variation
+	prs=()
+	crs=(0)
+	rcs=(0)
+	std=()
 	ffs=()
-	cvs=()
-	for i in $(seq 1 ${#tots[@]}); do
-		sigma=`echo -e "$counts" | awk -v i=$i '$i != 0' | datamash sstdev $i`
-		mu=`echo -e "$counts" | awk -v i=$i '$i != 0' | datamash mean $i`
-		ffs+=(`bc -l <<< "$sigma^2 / $mu" | sed 's/^\./0./'`)
-		cvs+=(`bc -l <<< "$sigma / $mu" | sed 's/^\./0./'`)
-		sigmas+=($sigma)
-		mus+=($mu)
+	cos=()
+	counts=(0)
+	totals=(0)
+	for i in $(seq 0 `expr ${#bedfiles[@]} - 1`); do
+		bf=${bedfiles[$i]}
+
+		# Select only current chromosome rows
+		bfchr=`cat $bf | sed 1d | awk -v chr=$chr '$1 == chr'`
+		
+		# Number of reads in the condition
+		tot=`cat $bf | sed 1d | cut -f 5 | paste -sd+ | bc`
+		
+		if [ 0 -eq $tot ]; then
+			msg="!!! No reads found in condition #$i.\n"
+			msg="$msg    Please re-run without the following bedFile: $bf"
+			echo -e "$msg"
+			exit 1
+		fi
+
+		# Number of reads in the condition in the chromosome
+		n=`echo "$bfchr" | cut -f 5 | paste -sd+ | bc`
+		
+		if [ -z "$n" ]; then
+			msg="!!! No reads found in condition #$i on $chr.\n"
+			msg="$msg    Please re-run without the following bedFile: $bf\n"
+			msg="$msg    Or without $chr."
+			echo -e "$msg"
+			exit 1
+		fi
+
+		# Probability ----------------------------------------------------------
+
+		r=`bc -l <<< "$n / $tot / $ncs"`
+		prs+=($r)
+
+		# Ratio of the sums ----------------------------------------------------
+
+		# Prepare ratios
+		prev_n=${counts[${#counts[@]}-1]}
+		prev_t=${totals[${#totals[@]}-1]}
+		r=`bc -l <<< "($n + $prev_n) / ($tot + $prev_t) / $ncs"`
+
+		# Add leading 0
+		r=`echo "$r" | sed -r "s/^\.(.*)$/0.\1/"`
+
+		# To check the calculations uncomment the following line
+		# echo -e "($n + $prev_n) / ($tot + $prev_t) / $ncs = $r"
+
+		# Store in the arrays
+		counts+=(`bc <<< "$n + $prev_n"`)
+		totals+=(`bc <<< "$tot + $prev_t"`)
+		rcs+=($r)
+
+		# Sum of the ratios ----------------------------------------------------
+		
+		# Normalize
+		r=`bc -l <<< "$n / $tot / $ncs"`
+		
+		# Sum previous ratio
+		r=`bc <<< "${crs[${#crs[@]} - 1]}+$r"`
+
+		# Add leading 0
+		r=`echo "$r" | sed -r "s/^\.(.*)$/0.\1/"`
+
+		# To check the calculations uncomment the following line
+		# echo -e "$n / $tot / $ncs = $r"
+		
+		# Save normalized counts
+		crs+=($r)
+
+		# Variability based ----------------------------------------------------
+		
+		# Calculate mean
+		mu=`echo "$bfchr" | datamash mean 5`
+		
+		# Calculate variance
+		sd=`echo "$bfchr" | datamash sstdev 5`
+		std+=($sd)
+		sigma=`bc -l <<< "$sd^2"`
+
+		# Fano factor
+		ffs+=(`bc -l <<< "$sigma^2 / $mu"`)
+
+		# Coefficient of variation
+		cov+=(`bc -l <<< "$sigma / $mu"`)		
 	done
 
-	# Calculate exclusivity ----------------------------------------------------
-	
-	# Calculate exclusivity per cutsite
-	exclu_p='{ OFS=FS=" "; OFMT="%.12f"
+	# Remove starting value (0)
+	unset crs[0]
+	unset rcs[0]
 
-		p=$1;
+	# Merging cumulative set
+	merged_prs=`join_by " " "${prs[@]}"`
+	merged_crs=`join_by " " "${crs[@]}"`
+	merged_rcs=`join_by " " "${rcs[@]}"`
+	merged_std=`join_by " " "${std[@]}"`
+	merged_ffs=`join_by " " "${ffs[@]}"`
+	merged_cov=`join_by " " "${cov[@]}"`
 
-		for ( B=2; B <= NF; B++ ) {
-			A=B-1;
+	# Forming new matrix row
+	nrow_prs=`echo "$chr $merged_prs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_crs=`echo "$chr $merged_crs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_rcs=`echo "$chr $merged_rcs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_std=`echo "$chr $merged_std" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_ffs=`echo "$chr $merged_ffs" | sed "s/^ //" | tr -s " " | tr " " "\t"`
+	nrow_cov=`echo "$chr $merged_cov" | sed "s/^ //" | tr -s " " | tr " " "\t"`
 
-			diff=$B-$A;
-
-			if ( diff < 0 ) { diff=0; }
-
-			p=p OFS diff;
-		}
-
-		print p;
-	}'
-	pexs=`echo -e "$probs" | awk "$exclu_p"`
-
-	# Identify maximum per cutsite
-	cexs=`echo -e "$pbays" | awk "$maxi_col"`
-
-	# Average over region
-	cex=`echo -e "$ccons" | datamash mean 1`
-
-	# Make matrices ------------------------------------------------------------
-	m_sums="$m_sums$chr `echo ${sums[@]}`\n"
-	m_tots="$m_tots$chr `echo ${tots[@]}`\n"
-	m_probs="$m_probs$chr `echo ${probs[@]}`\n"
-	m_cors="$m_cors$chr `echo ${cors[@]}`\n"
-	m_rocs="$m_rocs$chr `echo ${rocs[@]}`\n"
-	m_cons="$m_cons$chr\t$ccon\n"
-	m_bays="$m_bays$chr\t$cbay\n"
-	m_sigmas="$m_sigmas$chr `echo ${sigmas[@]}`\n"
-	m_mus="$m_mus$chr `echo ${mus[@]}`\n"
-	m_ffs="$m_ffs$chr `echo ${ffs[@]}`\n"
-	m_cvs="$m_cvs$chr `echo ${cvs[@]}`\n"
-	m_exs="$m_exs$chr\t$cex\n"
-
-	# Rank
-	m_cons=`echo -e "$m_cons" | sort -k2`
-	m_bays=`echo -e "$m_bays" | sort -k2`
-	m_exs=`echo -e "$m_exs" | sort -k2`
+	# Adding row to matrix
+	matrix_prs="$matrix_prs$nrow_prs\n"
+	matrix_crs="$matrix_crs$nrow_crs\n"
+	matrix_rcs="$matrix_rcs$nrow_rcs\n"
+	matrix_std="$matrix_std$nrow_std\n"
+	matrix_ffs="$matrix_ffs$nrow_ffs\n"
+	matrix_cov="$matrix_cov$nrow_cov\n"
 done
 
 if $debug; then
-	echo -e "$m_sums" > $outFile".sums.matrix.tmp.txt"
-	echo -e "$m_tots" > $outFile".tots.matrix.tmp.txt"
-	echo -e "$m_probs" > $outFile".probs.matrix.tmp.txt"
-	echo -e "$m_cors" > $outFile".cors.matrix.tmp.txt"
-	echo -e "$m_rocs" > $outFile".rocs.matrix.tmp.txt"
-
-	echo -e "$pcons" > $outFile".cons.$chr.matrix.tmp.txt"
-	echo -e "$ccons" > $outFile".cons.$chr.normatrix.tmp.txt"
-	echo -e "$m_cons" > $outFile".cons.ranked.tmp.txt"
-
-	echo -e "$pbays" > $outFile".bays.$chr.matrix.tmp.txt"
-	echo -e "$cbays" > $outFile".bays.$chr.normatrix.tmp.txt"
-	echo -e "$m_bays" > $outFile".bays.ranked.tmp.txt"
-
-	echo -e "$m_sigmas" > $outFile".sigmas.matrix.tmp.txt"
-	echo -e "$m_mus" > $outFile".mus.matrix.tmp.txt"
-	echo -e "$m_ffs" > $outFile".ffs.matrix.tmp.txt"
-	echo -e "$m_cvs" > $outFile".cvs.matrix.tmp.txt"
-
-	echo -e "$pexs" > $outFile".exs.matrix.$chr.tmp.txt"
-	echo -e "$cexs" > $outFile".exs.normatrix.$chr.tmp.txt"
-	echo -e "$m_exs" > $outFile".exs.ranked.tmp.txt"
+	echo -e "$matrix_prs" > $outFile".prs.matrix.tmp.tsv"
+	echo -e "$matrix_crs" > $outFile".crs.matrix.tmp.tsv"
+	echo -e "$matrix_rcs" > $outFile".rcs.matrix.tmp.tsv"
+	echo -e "$matrix_std" > $outFile".std.matrix.tmp.tsv"
+	echo -e "$matrix_ffs" > $outFile".ffs.matrix.tmp.tsv"
+	echo -e "$matrix_cov" > $outFile".cov.matrix.tmp.tsv"
 fi
 
-# Calculate centralities =======================================================
+# Calculate ratio (B/A) between consecutive conditions -------------------------
+echo -e " · Normalizing matrices..."
 
-# awk programs
-two_points='{ OFS=FS=" "; if ( 0 == NF ) next;
-	print $1 "\t" $NF / $2;
-}'
-global='{ OFS=FS=" "; if ( 0 == NF ) next;
-	sum=0;
-	for ( B=3; B <= NF; B++) {
-		A=B-1;
-		sum=sum + $B / $A;
-	}
-	print $1 "\t" sum;
-}'
-gfixed='{ OFS=FS=" "; if ( 0 == NF ) next;
-	sum=0;
-	for ( B=3; B <= NF; B++)
-		sum=sum + $B / $2;
-	print $1 "\t" sum;
-}'
-log_two_points='{ OFS=FS=" "; if ( 0 == NF ) next;
-	print $1 "\t" log($NF / $2);
-}'
-log_gfixed='{ OFS=FS=" "; if ( 0 == NF ) next;
-	sum=0;
-	for ( B=3; B <= NF; B++)
-		sum=sum + log($B / $2);
-	print $1 "\t" sum;
-}'
-diff_two_points='{ OFS=FS=" "; if ( 0 == NF ) next;
-	print $1 "\t" $NF - $2;
-}'
-diff_gfixed='{ OFS=FS=" "; if ( 0 == NF ) next;
-	sum=0;
-	for ( B=3; B <= NF; B++)
-		sum=sum + $B - $2;
-	print $1 "\t" sum;
-}'
+function normatrix_prev() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        A=B-1;
+	        a[c]=$B/$A;
+	        c++;
+	    }
 
-# Probability-based centrality -------------------------------------------------
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function normatrix_first() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        a[c]=$B/$2;
+	        c++;
+	    }
 
-p_ranked_two_points=`echo -e "$m_probs" | awk "$two_points" | sort -k2`
-p_ranked_global=`echo -e "$m_probs" | awk "$global" | sort -k2`
-p_ranked_gfixed=`echo -e "$m_probs" | awk "$gfixed" | sort -k2`
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function normatrix_2points() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS $NF/$2;
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function difmatrix_first() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        a[c]=$B - $2;
+	        c++;
+	    }
 
-# RoC centrality ---------------------------------------------------------------
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function difmatrix_2points() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS $NF-$2;
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function logmatrix_2points() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS log($NF/$2);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
+function logmatrix_first() {
+	matrix=$1
+	awkprogram='@include "join";
+	NF {
+		c=1;
+	    for (B = 3; B <= NF; B++) {
+	        a[c]=log($B / $2);
+	        c++;
+	    }
 
-roc_ranked_two_points=`echo -e "$m_rocs" | awk "$two_points" | sort -k2`
-roc_ranked_global=`echo -e "$m_rocs" | awk "$global" | sort -k2`
-roc_ranked_gfixed=`echo -e "$m_rocs" | awk "$gfixed" | sort -k2`
+		OFS=FS="\t";
+		OFMT="%.4f"
+	    print $1 OFS join(a, 1, c, OFS);
+	}'
+	echo -e "$matrix" | awk "$awkprogram"
+}
 
-# CoR centrality ---------------------------------------------------------------
+normatrix_prs_2p=`normatrix_2points "$matrix_prs"`
+normatrix_prs=`normatrix_prev "$matrix_prs"`
+normatrix_prs_fixed=`normatrix_first "$matrix_prs"`
 
-cor_ranked_two_points=`echo -e "$m_cors" | awk "$two_points" | sort -k2`
-cor_ranked_global=`echo -e "$m_cors" | awk "$global" | sort -k2`
-cor_ranked_gfixed=`echo -e "$m_cors" | awk "$gfixed" | sort -k2`
+normatrix_crs=`normatrix_prev "$matrix_crs"`
+normatrix_crs_fixed=`normatrix_first "$matrix_crs"`
+normatrix_crs_2p=`normatrix_2points "$matrix_crs"`
 
-# Variance centrality ----------------------------------------------------------
+normatrix_rcs_2p=`normatrix_2points "$matrix_rcs"`
+normatrix_rcs_fixed=`normatrix_first "$matrix_rcs"`
 
-var_ranked_two_points=`echo -e "$m_sigmas" | awk "$log_two_points" | sort -k2`
-var_ranked_gfixed=`echo -e "$m_sigmas" | awk "$log_gfixed" | sort -k2`
+logmatrix_std_2p=`logmatrix_2points "$matrix_std"`
+logmatrix_std_fixed=`logmatrix_first "$matrix_std"`
 
-# FF centrality ----------------------------------------------------------------
+difmatrix_ffs_2p=`difmatrix_2points "$matrix_ffs"`
+difmatrix_ffs_fixed=`difmatrix_first "$matrix_ffs"`
 
-ff_ranked_two_points=`echo -e "$m_ffs" | awk "$diff_two_points" | sort -k2`
-ff_ranked_gfixed=`echo -e "$m_ffs" | awk "$diff_gfixed" | sort -k2`
-
-# CoV centrality ---------------------------------------------------------------
-
-cv_ranked_two_points=`echo -e "$m_cvs" | awk "$diff_two_points" | sort -k2`
-cv_ranked_gfixed=`echo -e "$m_cvs" | awk "$diff_gfixed" | sort -k2`
+difmatrix_cov_2p=`difmatrix_2points "$matrix_cov"`
+difmatrix_cov_fixed=`difmatrix_first "$matrix_cov"`
 
 if $debug; then
-	echo -e "$p_ranked_two_points" > $outFile".probs.ranked.2p.tmp.txt"
-	echo -e "$p_ranked_global" > $outFile".probs.ranked.g.tmp.txt"
-	echo -e "$p_ranked_gfixed" > $outFile".probs.ranked.gf.tmp.txt"
-
-	echo -e "$cor_ranked_two_points" > $outFile".cors.ranked.2p.tmp.txt"
-	echo -e "$cor_ranked_global" > $outFile".cors.ranked.g.tmp.txt"
-	echo -e "$cor_ranked_gfixed" > $outFile".cors.ranked.gf.tmp.txt"
-
-	echo -e "$roc_ranked_two_points" > $outFile".rocs.ranked.2p.tmp.txt"
-	echo -e "$roc_ranked_global" > $outFile".rocs.ranked.g.tmp.txt"
-	echo -e "$roc_ranked_gfixed" > $outFile".rocs.ranked.gf.tmp.txt"
-
-	echo -e "$var_ranked_two_points" > $outFile".sigmas.ranked.2p.tmp.txt"
-	echo -e "$var_ranked_gfixed" > $outFile".sigmas.ranked.gf.tmp.txt"
-
-	echo -e "$ff_ranked_two_points" > $outFile".ffs.ranked.2p.tmp.txt"
-	echo -e "$ff_ranked_gfixed" > $outFile".ffs.ranked.gf.tmp.txt"
-
-	echo -e "$cv_ranked_two_points" > $outFile".cvs.ranked.2p.tmp.txt"
-	echo -e "$cv_ranked_gfixed" > $outFile".cvs.ranked.gf.tmp.txt"
+	echo -e "$normatrix_prs_2p" > $outFile".prs.normatrix.2p"
+	echo -e "$normatrix_prs" > $outFile".prs.normatrix"
+	echo -e "$normatrix_prs_fixed" > $outFile".prs.normatrix.fixed"
+	echo -e "$normatrix_crs" > $outFile".crs.normatrix"
+	echo -e "$normatrix_crs_fixed" > $outFile".crs.normatrix.fixed"
+	echo -e "$normatrix_crs_2p" > $outFile".crs.normatrix.2p"
+	echo -e "$normatrix_rcs_2p" > $outFile".rcs.normatrix.2p"
+	echo -e "$normatrix_rcs_fixed" > $outFile".rcs.normatrix.fixed"
+	echo -e "$logmatrix_std_2p" > $outFile".std.difmatrix.2p"
+	echo -e "$logmatrix_std_fixed" > $outFile".std.difmatrix.fixed"
+	echo -e "$difmatrix_ffs_2p" > $outFile".ffs.difmatrix.2p"
+	echo -e "$difmatrix_ffs_fixed" > $outFile".ffs.difmatrix.fixed"
+	echo -e "$difmatrix_cov_2p" > $outFile".cov.difmatrix.2p"
+	echo -e "$difmatrix_cov_fixed" > $outFile".cov.difmatrix.fixed"
 fi
 
-# Rank centralities ============================================================
+# Sum rankings & sort ----------------------------------------------------------
+echo -e " · Summing and sorting..."
+
+function sumsort_ranks() {
+	ranked=$1
+
+	awkprogram='
+	{
+		OFS=FS="\t";
+		tot=0;
+		for ( i = 2; i <= NF; i++ )
+			tot+=$i;
+		print $1 OFS tot;
+	}'
+	echo -e "$ranked" | tr " " "\t" | awk "$awkprogram" | sort -k2,2n
+}
+
+ranked_prs_2p=`sumsort_ranks "$normatrix_prs_2p"`
+ranked_prs=`sumsort_ranks "$normatrix_prs"`
+ranked_prs_fixed=`sumsort_ranks "$normatrix_prs_fixed"`
+ranked_crs=`sumsort_ranks "$normatrix_crs"`
+ranked_crs_fixed=`sumsort_ranks "$normatrix_crs_fixed"`
+ranked_crs_2p=`sumsort_ranks "$normatrix_crs_2p"`
+ranked_rcs_2p=`sumsort_ranks "$normatrix_rcs_2p"`
+ranked_rcs_fixed=`sumsort_ranks "$normatrix_rcs_fixed"`
+ranked_std_2p=`sumsort_ranks "$logmatrix_std_2p"`
+ranked_std_fixed=`sumsort_ranks "$logmatrix_std_fixed"`
+ranked_ffs_2p=`sumsort_ranks "$difmatrix_ffs_2p"`
+ranked_ffs_fixed=`sumsort_ranks "$difmatrix_ffs_fixed"`
+ranked_cov_2p=`sumsort_ranks "$difmatrix_cov_2p"`
+ranked_cov_fixed=`sumsort_ranks "$difmatrix_cov_fixed"`
+
+if $debug; then
+	echo -e "$ranked_prs_2p" > $outFile".prs.2p.tmp.txt"
+	echo -e "$ranked_prs" > $outFile".prs.tmp.txt"
+	echo -e "$ranked_prs_fixed" > $outFile".prs.fixed.tmp.txt"
+	echo -e "$ranked_crs" > $outFile".crs.tmp.txt"
+	echo -e "$ranked_crs_fixed" > $outFile".crs.fixed.tmp.txt"
+	echo -e "$ranked_crs_2p" > $outFile".crs.2p.tmp.txt"
+	echo -e "$ranked_rcs_2p" > $outFile".rcs.2p.tmp.txt"
+	echo -e "$ranked_rcs_fixed" > $outFile".rcs.fixed.tmp.txt"
+	echo -e "$ranked_std_2p" > $outFile".std.2p.tmp.txt"
+	echo -e "$ranked_std_fixed" > $outFile".std.fixed.tmp.txt"
+	echo -e "$ranked_ffs_2p" > $outFile".ffs.2p.tmp.txt"
+	echo -e "$ranked_ffs_fixed" > $outFile".ffs.fixed.tmp.txt"
+	echo -e "$ranked_cov_2p" > $outFile".cov.2p.tmp.txt"
+	echo -e "$ranked_cov_fixed" > $outFile".cov.fixed.tmp.txt"
+fi
+
+# Recap ------------------------------------------------------------------------
+echo -e " · Recapping..."
 
 # Print header
-out="P2p\tPg\tPgf\tCR2p\tCRg\tCRgf\tRC2p\tRCg\tRCgf\tcond\tbayes\tV2p\tVgf"
-out=$out"\tF2p\tFgf\tCV2p\tCVgf\texc"
-echo -e $out > $outFile".recap.txt"
+header="P2p\tPg\tPgf\tCR2p\tCRg\tCRgf\tRC2p\tRCgf\tV2p\tVgf"
+header=$header"\tFF2p\tFFgf\tCV2p\tCVgf"
+echo -e $header > $outFile".recap.txt"
 
 # Merge and print rankings
-
 paste \
-	<(echo -e "$p_ranked_two_points" | cut -f 1) \
-	<(echo -e "$p_ranked_global" | cut -f 1) \
-	<(echo -e "$p_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$cor_ranked_two_points" | cut -f 1) \
-	<(echo -e "$cor_ranked_global" | cut -f 1) \
-	<(echo -e "$cor_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$roc_ranked_two_points" | cut -f 1) \
-	<(echo -e "$roc_ranked_global" | cut -f 1) \
-	<(echo -e "$roc_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$m_cons" | cut -f 1) \
-	<(echo -e "$m_bays" | cut -f 1) \
-	<(echo -e "$var_ranked_two_points" | cut -f 1) \
-	<(echo -e "$var_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$ff_ranked_two_points" | cut -f 1) \
-	<(echo -e "$ff_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$cv_ranked_two_points" | cut -f 1) \
-	<(echo -e "$cv_ranked_gfixed" | cut -f 1) \
-	<(echo -e "$m_exs" | cut -f 1) \
+	<(echo -e "$ranked_prs_2p" | cut -f 1) \
+	<(echo -e "$ranked_prs" | cut -f 1) \
+	<(echo -e "$ranked_prs_fixed" | cut -f 1) \
+	<(echo -e "$ranked_crs" | cut -f 1) \
+	<(echo -e "$ranked_crs_fixed" | cut -f 1) \
+	<(echo -e "$ranked_crs_2p" | cut -f 1) \
+	<(echo -e "$ranked_rcs_2p" | cut -f 1) \
+	<(echo -e "$ranked_rcs_fixed" | cut -f 1) \
+	<(echo -e "$ranked_std_2p" | cut -f 1) \
+	<(echo -e "$ranked_std_fixed" | cut -f 1) \
+	<(echo -e "$ranked_ffs_2p" | cut -f 1) \
+	<(echo -e "$ranked_ffs_fixed" | cut -f 1) \
+	<(echo -e "$ranked_cov_2p" | cut -f 1) \
+	<(echo -e "$ranked_cov_fixed" | cut -f 1) \
 	>> $outFile".recap.txt"
 
 # End --------------------------------------------------------------------------
