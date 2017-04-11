@@ -97,25 +97,17 @@ for bf in $*; do
 	fi
 done
 
-# TEST =========================================================================
-
-if [ 0 -eq 1 ]; then
-	bedfiles=()
-	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t2\nchr3\t0\t0\t0\t1")
-	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t4\nchr3\t0\t0\t0\t3")
-	bedfiles+=("#\nchr\t0\t0\t0\t1\nchr\t0\t0\t0\t8\nchr3\t0\t0\t0\t9")
-
-	outFile="output"
-
-	for i in $(seq 0 `bc <<< "${#bedfiles[@]} - 1"`); do
-		echo -e ${bedfiles[$i]} > c$i.tmp
-		bedfiles[$i]="c$i.tmp"
-		echo -e "\n"${bedfiles[$i]}
-		cat ${bedfiles[$i]}
-	done
-fi
-
 # RUN ==========================================================================
+
+# Identify chromosomes ---------------------------------------------------------
+echo -e " · Identifying chromosomes..."
+
+chr_list=""
+for bf in ${bedfiles[@]}; do
+	chr_list=$chr_list" "`cat $bf | sed 1d | cut -f 1 | sort | uniq`
+done
+chr_list=`echo $chr_list | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+IFS=' ' read -r -a chr_list <<< "$chr_list"
 
 # Generate cumulative probability distribution matrix --------------------------
 # One chromosome per row, one condition per column.
@@ -126,8 +118,7 @@ matrix_crs=""
 matrix_rcs=""
 
 # Cycle over chromosomes
-for chr in $(echo $(seq 1 22) X); do
-	chr="chr$chr"
+for chr in ${chr_list[@]}; do
 	echo -e " >>> Working on $chr..."
 
 	# Number of cutsite in the chromosome
