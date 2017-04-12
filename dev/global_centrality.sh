@@ -129,13 +129,13 @@ if [ -n "$regFile" ]; then
 	for bfi in $(seq 0 `bc <<< "${#bedfiles[@]} - 1"`); do
 		bf=${bedfiles[$bfi]}
 
-		# # Assign bedfile rows to ROIs
-		# echo -e " >> Working on $bf ..."
+		# Assign bedfile rows to ROIs
+		echo -e " >> Working on $bf ..."
 
-		# # Use ROIs as chromosomes
-		# echo -e " >>> Using regions as chromosomes..."
-		# ./bed_addROIs.py $regFile $bf | awk "$rois2chr" \
-		# 	> $bf".regions.tmp"
+		# Use ROIs as chromosomes
+		echo -e " >>> Using regions as chromosomes..."
+		./bed_addROIs.py $regFile $bf | awk "$rois2chr" \
+			> $bf".regions.tmp"
 
 		# Use tmp file with fake chromosomes
 		bedfiles[$bfi]=$bf".regions.tmp"
@@ -143,8 +143,8 @@ if [ -n "$regFile" ]; then
 
 	# Make temporary cutsite list
 	echo -e " >> Working on $csList ..."
-	# ./bed_addROIs.py $regFile $csList | awk "$rois2chr" \
-	# 	> $csList".regions.tmp"
+	./bed_addROIs.py $regFile $csList | awk "$rois2chr" \
+		> $csList".regions.tmp"
 	csList=$csList".regions.tmp"
 fi
 
