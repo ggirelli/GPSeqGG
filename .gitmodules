@@ -1,0 +1,3 @@
+[submodule "lib/bed-tools-gg"]
+	path = lib/bed-tools-gg
+	url = git@github.com:ggirelli/bed-tools-gg.git
