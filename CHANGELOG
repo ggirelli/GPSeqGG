@@ -2,6 +2,8 @@ v1.0.1
 ---
 
 * Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
+* Counting UMI duplicates during strict deduplication step.
+* Optimized read quality filter memory usage.
 
 v1.0.0
 ===
