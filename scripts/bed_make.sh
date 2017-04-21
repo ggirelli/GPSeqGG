@@ -22,7 +22,7 @@ helps="
  usage: ./bed_make.sh [-h] -o outDir -c csSeq [-f csList][-t headerLine]
 
  Description:
-  Run FASTQC tool.
+  Generates bed file from UMI txt file with chr-start-UMIs-counts columns.
 
  Mandatory arguments:
   -o outDir	Condition folder, containing UMI counts.
