@@ -256,6 +256,7 @@ fname <- 'UMIpos'
 if ( 1 == cutsites ) fname <- paste0(fname, '.atcs')
 
 # Read UMI table
+cat(' · Reading UMIs ...\n')
 u <- read_delim(paste0(dirpath, fname, '.txt'),
 	'\t', col_names=c('chr', 'pos', 'seq', 'qual'), col_types='iccc')
 u$pos <- as.numeric(u$pos)
@@ -264,15 +265,24 @@ u$pos <- as.numeric(u$pos)
 
 # Check UMI length
 cat(' · Checking UMI length ...\n')
-ulen = unique(unlist(mclapply(unlist(strsplit(u$seq, ' ', fixed = T)),
-	FUN = nchar, mc.cores = num_proc)))
+ulen = unique(unlist(mclapply(u$seq[1:10],
+	FUN = function(seq) {
+		return(unique(unlist(
+			lapply(
+				unique(unlist(strsplit(seq, ' ', fixed = T))),
+				FUN = nchar
+			)
+		)))
+	}
+	, mc.cores = num_proc
+)))
 if ( 1 < length(ulen) ) {
-	cat(paste0(' · Multiple UMI length detected: ',
+	cat(paste0('  >> Multiple UMI length detected: ',
 		paste(ulen, collapse = ' '), ' [nt]\n'))
-	cat(paste0(' · Using the average to calculate the threshold: ',
+	cat(paste0('  >> Using the average to calculate the threshold: ',
 		mean(ulen), ' [nt]\n'))
 } else {
-	cat(paste0(' · UMI length is consistently ', ulen, ' nt.\n'))
+	cat(paste0('  >> UMI length is consistently ', ulen, ' nt.\n'))
 }
 
 # Count UMIs
@@ -326,14 +336,11 @@ if ( 0 < cutoff ) {
 	out_quals = unique_quals[which(uq_ps < cutoff)]
 
 	# Discard outliers
-	u = rbindlist(mclapply(1:nrow(u),
-		FUN = function(i, u, out_quals) {
-			# Select UMI table row
-			row = u[i,]
-
+	u = rbindlist(mclapply(split(u, seq(nrow(u))),
+		FUN = function(row, out_quals) {
 			# Retrieve single sequences and quality strings
-			ss = unlist(strsplit(u$seq[i], ' ', fixed = T))
-			qs = unlist(strsplit(u$qual[i], ' ', fixed = T))
+			ss = unlist(strsplit(row$seq, ' ', fixed = T))
+			qs = unlist(strsplit(row$qual, ' ', fixed = T))
 
 			# Identify non-outliers
 			toRemove = which(qs %in% out_quals)
@@ -346,7 +353,7 @@ if ( 0 < cutoff ) {
 
 			# Output
 			return(row)
-		}, u, out_quals
+		}, out_quals
 		, mc.cores = num_proc
 	))
 
@@ -398,14 +405,14 @@ log = paste0(log, nqkept, ' reads pass the read quality filter (',
 
 # Remove those that do not pass the threshold by checking from the overall index
 cat(' · Removing UMIs ...\n')
-u = as.data.frame(rbindlist(mclapply(1:nrow(u),
-	FUN = function(i) {
-		ss = unlist(strsplit(u$seq[i], ' ', fixed = T))
-		qs = unlist(strsplit(u$qual[i], ' ', fixed = T))
+u = as.data.frame(rbindlist(mclapply(split(u, seq(nrow(u))),
+	FUN = function(row) {
+		ss = unlist(strsplit(row$seq, ' ', fixed = T))
+		qs = unlist(strsplit(row$qual, ' ', fixed = T))
 
 		return(data.frame(
-			chr = u$chr[i],
-			pos = u$pos[i],
+			chr = row$chr,
+			pos = row$pos,
 			seq = paste(ss[!qs %in% rmq], collapse = ' '),
 			qual = paste(qs[!qs %in% rmq], collapse = ' '),
 			stringsAsFactors = F
@@ -422,16 +429,35 @@ n = unlist(lapply(u$seq,
 	}
 ))
 
+# Remove cutsites with no UMIs left
+nempty = sum(0 == n)
+if ( 0 != nempty ) {
+	cat(paste0(' · Removing ', nempty, ' locations left with no UMIs...\n'))
+	u = u[-which(0 == n),]
+	n = n[-which(0 == n)]
+}
+
 # Strict unique ----------------------------------------------------------------
 
 # Perform strict unique
 cat(' · Performing strict UMI deduplication...\n')
-uniqued_seq = unlist(mclapply(u$seq,
+uniqc = as.data.frame(rbindlist(mclapply(u$seq,
 	FUN = function(ss) {
-		paste(unique(unlist(strsplit(ss, ' ', fixed = T))), collapse = ' ')
+		# In case of no UMIs
+		if ( 0 == nchar(ss) )
+			return(data.frame(umis = "", counts = ""))
+
+		# Strict unique and occurrence count
+		t=table(unlist(strsplit(ss, ' ', fixed = T)))
+		data.frame(
+			umis = paste(names(t), collapse = ' '),
+			counts = paste(as.character(t), collapse = ' ')
+		)
 	}
 	, mc.cores = num_proc
-))
+)))
+
+uniqued_seq = as.character(uniqc$umis)
 
 # Count delta-N
 deltan = unlist(mclapply(strsplit(uniqued_seq, ' ', fixed = T),
@@ -452,6 +478,7 @@ uu = data.frame(
 	chr = u$chr,
 	pos = u$pos,
 	seq = uniqued_seq,
+	counts = as.character(uniqc$counts),
 	stringsAsFactors = F
 )
 
