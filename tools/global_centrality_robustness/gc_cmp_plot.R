@@ -50,14 +50,18 @@ if ( !all(unlist(lapply(cmpFiles, FUN = file.exists))) ) {
 	stop("!!!ERROR!!! Cannot find specified files.\n")
 }
 
-# FUNCTIONS ====================================================================
+# Color palette
+colors = c('#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c',
+	'#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#FF2299', '#b15928', '#000000',
+	'#656565')
 
 # RUN ==========================================================================
 
-# Prepare table
+# Prepare table with metric value, metric label and shuffling percentage cols
 t = rbindlist(lapply(seq(length(cmpFiles)),
 	FUN = function(i) {
 		t = read.delim(paste0(cmpFiles[i]), as.is = T)
+
 		t2 = rbindlist(lapply(colnames(t),
 			FUN = function(cn) {
 				data.frame(
@@ -73,80 +77,74 @@ t = rbindlist(lapply(seq(length(cmpFiles)),
 ))
 
 # Identify number of iterations
-nIter = unique(as.numeric(by(t, t$label, FUN = function(x) { unique(table(x$perc)) })))
+nIter = unique(as.numeric(by(t, t$label,
+	FUN = function(x) { unique(table(x$perc)) })))
 
 # Identify max medians
 max_median = max(unlist(by(t, t$label,
 	FUN = function(x) { by(x, x$perc,
 		FUN = function(y) { median(y$value) }) })))
 
-# Calculate 
-
-colors = c('#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c',
-	'#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#FF2299', '#b15928', '#000000',
-	'#656565')
-
+# Prepare plot output
 pdf(outFile, width = 20, height = 10)
 par(mfrow = c(1,2), oma = c(0,0,2,0), mar = c(5,5,2.5,2))
 
-# Plot per measure type
+# MEDIANS
+# Plot per metric type
 labels = as.character(unique(t$label))
 l = lapply(seq(length(labels)),
 	FUN = function(li) {
+		# Select current metric type
 		label = labels[li]
 		subt = as.data.frame(t)[as.character(t$label) == label,]
 
+		# Calculate medians
+		medians = as.numeric(by(subt, subt$perc,
+			FUN = function(x) {
+				median(x$value)
+			}
+		))
+
+		# Set plot window with first metric, then add to the plot
 		if ( 1 == li ){
-			# plot
-			medians = as.numeric(by(subt, subt$perc,
-				FUN = function(x) {
-					median(x$value)
-				}
-			))
 			plot(medians ~ percs, type = 'b', col = colors[li],
 				ylim=c(0, max_median), xlab='Percentage of reshuffled reads',
 				ylab='Median Kendall tau distance from original ranking')
 		} else {
-			#lines
-			medians = as.numeric(by(subt, subt$perc,
-				FUN = function(x) {
-					median(x$value)
-				}
-			))
 			lines(medians ~ percs, type = 'b', col = colors[li])
 		}
 	}
 )
 legend(10, max_median, col=colors, labels, lty=1, pch=1)
 
+# MAXIMAS
+# Plot per metric type
 l = lapply(seq(length(labels)),
 	FUN = function(li) {
+		# Select current metric type
 		label = labels[li]
 		subt = as.data.frame(t)[as.character(t$label) == label,]
 
+		# Calculate maximas
+		maxs = as.numeric(by(subt, subt$perc,
+			FUN = function(x) {
+				max(x$value)
+			}
+		))
+
+		# Set plot window with first metric, then add to the plot
 		if ( 1 == li ){
-			# plot
-			maxs = as.numeric(by(subt, subt$perc,
-				FUN = function(x) {
-					max(x$value)
-				}
-			))
 			plot(maxs ~ percs, type = 'b', col = colors[li],
 				ylim=c(0, max(t$value)), xlab='Percentage of reshuffled reads',
 				ylab='Max Kendall tau distance from original ranking')
 		} else {
-			#lines
-			maxs = as.numeric(by(subt, subt$perc,
-				FUN = function(x) {
-					max(x$value)
-				}
-			))
 			lines(maxs ~ percs, type = 'b', col = colors[li])
 		}
 	}
 )
 legend(10, max(t$value), col=colors, labels, lty=1, pch=1)
 
+# Add more text
 title("Study of global centrality metrics robustness",
 	outer=TRUE)
 mtext(paste0("(", label, "; full-chromosome windows; nIter = ", nIter, ")"),
@@ -154,6 +152,7 @@ mtext(paste0("(", label, "; full-chromosome windows; nIter = ", nIter, ")"),
 mtext("Shuffling performed on the whole genome at the single-reads level.",
 	side = 3, line = -2, outer = T)
 
+# Write output
 graphics.off()
 
 # END --------------------------------------------------------------------------
