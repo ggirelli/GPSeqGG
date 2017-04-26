@@ -36,28 +36,22 @@ helps="
 
  Optional arguments:
   -h		Show this help page.
-  -i		Perform intermediate ranking.
   -d		Debug mode: write out intermediate results.
   -r regfile	Path to bedfile, containing regions to be assigned to.
 "
 
 # Default options
-interRank=false
-debug=false
-fixed=false
+debug=0
 
 # Parse options
-while getopts hdifr:c:o: opt "${bedfiles[@]}"; do
+while getopts hdfr:c:o: opt "${bedfiles[@]}"; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
 			exit 0
 		;;
-		i)
-			interRank=true
-		;;
 		d)
-			debug=true
+			debug=1
 		;;
 		r)
 			if [ -e $OPTARG ]; then
@@ -108,6 +102,15 @@ for bf in $*; do
 	fi
 done
 
+if [ 0 -eq ${#bedfiles[@]} ]; then
+	msg="!!! No bedfile was specified!\n"
+	echo -e " $helps\n$msg"
+	exit 1
+fi
+
+# Library directory
+libdir="`dirname ${BASH_SOURCE}`/../lib/"
+
 # RUN ==========================================================================
 
 # Assign to regions ------------------------------------------------------------
@@ -134,7 +137,7 @@ if [ -n "$regFile" ]; then
 
 		# Use ROIs as chromosomes
 		echo -e " >>> Using regions as chromosomes..."
-		./bed_addROIs.py $regFile $bf | awk "$rois2chr" \
+		$libdir/bed-tools-gg/bed_addROIs.py $regFile $bf | awk "$rois2chr" \
 			> $bf".regions.tmp"
 
 		# Use tmp file with fake chromosomes
@@ -143,7 +146,7 @@ if [ -n "$regFile" ]; then
 
 	# Make temporary cutsite list
 	echo -e " >> Working on $csList ..."
-	./bed_addROIs.py $regFile $csList | awk "$rois2chr" \
+	$libdir/bed-tools-gg/bed_addROIs.py $regFile $csList | awk "$rois2chr" \
 		> $csList".regions.tmp"
 	csList=$csList".regions.tmp"
 fi
@@ -326,7 +329,7 @@ for chr in ${chr_list[@]}; do
 	matrix_cov="$matrix_cov$nrow_cov\n"
 done
 
-if $debug; then
+if [ 1 -eq $debug ]; then
 	echo -e "$matrix_prs" > $outFile".prs.matrix.tmp.tsv"
 	echo -e "$matrix_crs" > $outFile".crs.matrix.tmp.tsv"
 	echo -e "$matrix_rcs" > $outFile".rcs.matrix.tmp.tsv"
@@ -462,7 +465,7 @@ difmatrix_ffs_fixed=`difmatrix_first "$matrix_ffs"`
 difmatrix_cov_2p=`difmatrix_2points "$matrix_cov"`
 difmatrix_cov_fixed=`difmatrix_first "$matrix_cov"`
 
-if $debug; then
+if [ 1 -eq $debug ]; then
 	echo -e "$normatrix_prs_2p" > $outFile".prs.normatrix.2p"
 	echo -e "$normatrix_prs" > $outFile".prs.normatrix"
 	echo -e "$normatrix_prs_fixed" > $outFile".prs.normatrix.fixed"
@@ -522,7 +525,7 @@ ranked_ffs_fixed=`sumsort_ranks "$difmatrix_ffs_fixed"`
 ranked_cov_2p=`sumsort_ranks "$difmatrix_cov_2p"`
 ranked_cov_fixed=`sumsort_ranks "$difmatrix_cov_fixed"`
 
-if $debug; then
+if [ 1 -eq $debug ]; then
 	echo -e "$ranked_prs_2p" > $outFile".prs.2p.tmp.txt"
 	echo -e "$ranked_prs" > $outFile".prs.tmp.txt"
 	echo -e "$ranked_prs_fixed" > $outFile".prs.fixed.tmp.txt"
@@ -546,6 +549,7 @@ echo -e " · Recapping..."
 header="P2p\tPg\tPgf\tCR2p\tCRg\tCRgf\tRC2p\tRCgf\tV2p\tVgf"
 header=$header"\tFF2p\tFFgf\tCV2p\tCVgf"
 echo -e $header > $outFile".recap.txt"
+echo -e $header > $outFile".recap.value.txt"
 
 # Merge and print rankings
 paste \
@@ -564,6 +568,32 @@ paste \
 	<(echo -e "$ranked_cov_2p" | cut -f 1) \
 	<(echo -e "$ranked_cov_fixed" | cut -f 1) \
 	>> $outFile".recap.txt"
+
+# Merge and print rankings
+paste \
+	<(echo -e "$ranked_prs_2p" | cut -f 2) \
+	<(echo -e "$ranked_prs" | cut -f 2) \
+	<(echo -e "$ranked_prs_fixed" | cut -f 2) \
+	<(echo -e "$ranked_crs" | cut -f 2) \
+	<(echo -e "$ranked_crs_fixed" | cut -f 2) \
+	<(echo -e "$ranked_crs_2p" | cut -f 2) \
+	<(echo -e "$ranked_rcs_2p" | cut -f 2) \
+	<(echo -e "$ranked_rcs_fixed" | cut -f 2) \
+	<(echo -e "$ranked_std_2p" | cut -f 2) \
+	<(echo -e "$ranked_std_fixed" | cut -f 2) \
+	<(echo -e "$ranked_ffs_2p" | cut -f 2) \
+	<(echo -e "$ranked_ffs_fixed" | cut -f 2) \
+	<(echo -e "$ranked_cov_2p" | cut -f 2) \
+	<(echo -e "$ranked_cov_fixed" | cut -f 2) \
+	>> $outFile".recap.value.txt"
+
+# Remove tmp files
+if [ -n "$regFile" ]; then
+	for bf in ${bedfiles[@]}; do
+		rm $bf
+	done
+	rm $csList
+fi
 
 # End --------------------------------------------------------------------------
 
