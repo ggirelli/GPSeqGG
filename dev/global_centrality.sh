@@ -137,7 +137,7 @@ if [ -n "$regFile" ]; then
 
 		# Use ROIs as chromosomes
 		echo -e " >>> Using regions as chromosomes..."
-		$libdir/bed-tools-gg/bed_addROIs.py $regFile $bf | awk "$rois2chr" \
+		$libdir/bed-tools-gg/bed_add_rois.py $regFile $bf | awk "$rois2chr" \
 			> $bf".regions.tmp"
 
 		# Use tmp file with fake chromosomes
@@ -146,7 +146,7 @@ if [ -n "$regFile" ]; then
 
 	# Make temporary cutsite list
 	echo -e " >> Working on $csList ..."
-	$libdir/bed-tools-gg/bed_addROIs.py $regFile $csList | awk "$rois2chr" \
+	$libdir/bed-tools-gg/bed_add_rois.py $regFile $csList | awk "$rois2chr" \
 		> $csList".regions.tmp"
 	csList=$csList".regions.tmp"
 fi
@@ -212,7 +212,7 @@ for chr in ${chr_list[@]}; do
 			echo -e "$msg"
 			exit 1
 		fi
-
+		
 		# Number of reads in the condition in the chromosome
 		n=`echo "$bfchr" | cut -f 5 | paste -sd+ | bc`
 		if [ -z "$n" ]; then
