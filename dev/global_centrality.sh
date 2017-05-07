@@ -30,9 +30,9 @@ helps="
   Calculate global centrality metrics.
 
  Mandatory arguments:
-  BEDFILE	Bed file(s). Expected to be ordered per condition.
   -c csList	Cutsite list file.
   -o outFile	Output matrix file.
+  BEDFILE	Bed file(s). Expected to be ordered per condition.
 
  Optional arguments:
   -h		Show this help page.
