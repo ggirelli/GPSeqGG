@@ -259,7 +259,9 @@ if [ -e "$indir/pat_files" ]; then
 	conds=`cut -f 1 $indir/pat_files | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
 	IFS=',' read -r -a condv <<< "$conds"
 else
-	msg="!!! Missing pat_files."
+	msg="!!! Missing pat_files.\n"
+	msg=$msg"    Standard pat_files row:\n"
+	msg=$msg"    conditionLabel	linkerPattern	cutsiteSeq	linkerSize\n"
 	echo -e "$helps\n$msg"
 	exit 1
 fi
@@ -288,6 +290,13 @@ if [ -n "$neg" ]; then
 else
 	settings="$settings\n!!! No negative condition."
 fi
+
+settings=$settings"\n\n Pattern instructions:\n"
+patterns=" conditionLabel\tlinkerPattern\tcutsiteSeq\tlinkerSize\n"
+patterns=$patterns" "$(cat -t $indir/pat_files | sed "s/\^I/\\\t/g")
+patterns="$(echo -e ' '$patterns | sed ':a;N;$!ba;s/\n/\n /g')"
+patterns="$(column -c 4 -s '~' -t <(echo "$patterns" | sed 's/\t/~/g'))"
+settings=$settings"${patterns}"
 
 # Other settings
 settings="$settings
@@ -320,7 +329,6 @@ fi
 if $rmY; then
 	settings="$settings!!! Removing chrY after alignment.\n"
 fi
-
 
 # Additional files
 if [ -n "$csList" ]; then
