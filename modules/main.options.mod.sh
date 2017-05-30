@@ -100,7 +100,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				indir=$OPTARG
 			else
 				msg="Invalid -i option, folder not found.\nFolder: $OPTARG"
-				echo -e "$helps\n!!! $msg"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
 			fi
 		;;
@@ -130,7 +130,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				aligner=$OPTARG
 			else
 				msg="Invalid -a option. Available values: 'bwa', 'bowtie2'."
-				echo -e "$helps\n!!! $msg"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
 			fi
 		;;
@@ -140,7 +140,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				bwaIndex=$OPTARG
 			else
 				msg="Invalid -d option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n!!! $msg"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exi 1
 			fi
 		;;
@@ -187,8 +187,8 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			if [ -e $OPTARG ]; then
 				csList=$OPTARG
 			else
-				msg="Invalid -e option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n!!! $msg"
+				msg="Invalid -l option, file not found.\nFile: $OPTARG"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
 			fi
 		;;
@@ -198,7 +198,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				maskFile=$OPTARG
 			else
 				msg="Invalid -m option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n!!! $msg"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
 			fi
 		;;
@@ -208,7 +208,7 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				chrLengths=$OPTARG
 			else
 				msg="Invalid -s option, file not found.\nFile: $OPTARG"
-				echo -e "$helps\n!!! $msg"
+				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
 			fi
 		;;
@@ -217,21 +217,21 @@ done
 
 # Check mandatory options
 if [ -z "$indir" ]; then
-	echo -e "$helps\n!!! Missing mandatory -i option.\n"
+	echo -e "$helps\n!!! ERROR! Missing mandatory -i option.\n"
 	exit 1
 fi
 if [ -z "$outdir" ]; then
-	echo -e "$helps\n!!! Missing mandatory -o option.\n"
+	echo -e "$helps\n!!! ERROR! Missing mandatory -o option.\n"
 	exit 1
 fi
 if [ -z "$expID" ]; then
-	echo -e "$helps\n!!! Missing mandatory -e option.\n"
+	echo -e "$helps\n!!! ERROR! Missing mandatory -e option.\n"
 	exit 1
 fi
 
 # Additional checks
 if [ "bwa" == "$aligner" -a -z "$bwaIndex" ]; then
-	echo -e "$helps\n!!! Missing mandatory -d option.\n"
+	echo -e "$helps\n!!! ERROR! Missing mandatory -d option.\n"
 	exit 1
 fi
 
@@ -259,7 +259,7 @@ if [ -e "$indir/pat_files" ]; then
 	conds=`cut -f 1 $indir/pat_files | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
 	IFS=',' read -r -a condv <<< "$conds"
 else
-	msg="!!! Missing pat_files.\n"
+	msg="!!! ERROR! Missing pat_files.\n"
 	msg=$msg"    Standard pat_files row:\n"
 	msg=$msg"    conditionLabel	linkerPattern	cutsiteSeq	linkerSize\n"
 	echo -e "$helps\n$msg"

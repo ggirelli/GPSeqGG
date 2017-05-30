@@ -14,7 +14,7 @@ Place the sequencing output in the **input** folder.
 * If single-end sequencing, only one fastq.tar.gz file is expected (i.e., R1).
 * If pair-end sequencing also a second fastq.tar.gz file is expected (i.e., R2).
 
-The sequencing output file name must follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID*, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
+The sequencing output file name (i.e., the fastq file(s)) **must** follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID* (this is provided to the pipeline through th `-e expID` option), `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
 
 If multiple lanes are available in the output, the file should be merged using the command:
 
@@ -23,6 +23,8 @@ cat expID_S1_L*_R1_001.fastq.gz > expID_S1_LALL_R1_001.fastq.gz
 ```
 
 If the fastq files were merged, remove the original ones.
+
+Remember to double check that the merged fastq file still follows the Illumina name format.
 
 ### 3. Pattern file
 

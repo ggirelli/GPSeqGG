@@ -1,7 +1,9 @@
 gpseq-seq-gg v1.0.0
 ===
 
-A pipeline for Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis. More details in the [docs folder](docs/).
+A pipeline for Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis. More details in the [docs](docs/).
+
+Also, please visit the [how to page](docs/how-to/) and the [F.A.Q. page](docs/faq/) for more details and what to do in case of an error.
 
 #### Pipeline steps
 

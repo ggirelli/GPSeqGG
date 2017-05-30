@@ -65,7 +65,7 @@ find $indir -maxdepth 1 -type f -iname "*$expID*R[12]*" | sort > filelist
 numb_of_files=`cat filelist | wc -l`
 
 if [ 0 -eq $numb_of_files ]; then
-	echo -e "!!! ERROR. No R1/R2 files found for $expID.\n"
+	echo -e "!!! ERROR! No R1/R2 files found for $expID.\n"
 	exit 1
 fi
 
