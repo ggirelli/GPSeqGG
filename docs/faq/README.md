@@ -1,6 +1,22 @@
 F.A.Q.
 ===
 
+* What can I do if I get the following "!!! ERROR!" message?
+	 * [Invalid -i option, folder not found.](#invalid--i-option-folder-not-found)
+	 * [Invalid -a option. Available values: 'bwa', 'bowtie2'.](#invalid--a-option-available-values-bwa-bowtie2)
+	 * [Missing mandatory -d option. OR Invalid -d option, file not found.](#missing-mandatory--d-option-or-invalid--d-option-file-not-found)
+	 * [Invalid -l option, file not found.](#invalid--l-option-file-not-found)
+	 * [Invalid -m option, file not found.](#invalid--m-option-file-not-found)
+	 * [Invalid -s option, file not found.](#invalid--s-option-file-not-found)
+	 * [Missing mandatory -i option.](#missing-mandatory--i-option)
+	 * [Missing mandatory -o option.](#missing-mandatory--o-option)
+	 * [Missing mandatory -e option.](#missing-mandatory--e-option)
+	 * [Missing columns in pat_files, row X. Expected 4 columns, found Y.](#missing-columns-in-pat_files-row-x-expected-4-columns-found-y)
+	 * [Missing pat_files.](#missing-pat_files)
+	 * [No R1/R2 files found for $expID.](#no-r1r2-files-found-for-expid)
+
+## What can I do if I get the following "!!! ERROR!" message?
+
 ### Invalid -i option, folder not found.
 
 The specified **input folder** does not exist. Double-check if you provided the proper path.
@@ -9,8 +25,7 @@ The specified **input folder** does not exist. Double-check if you provided the 
 
 Currently, `gpseq-seq-gg` supports only `bwa mem` (with `bwa` option) and `bowtie2` (with `bowtie2` option) as aligners. `bwa` is the default.
 
-### Missing mandatory -d option.
-### Invalid -d option, file not found.
+### Missing mandatory -d option. OR Invalid -d option, file not found.
 
 The specified **BWA index file** does not exist. Double-check if you provided the proper path. Remember that the `-d` option is mandatory if you use `-a bwa` (default).
 
