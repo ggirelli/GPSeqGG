@@ -75,6 +75,8 @@ The steps performed by `main` are the following:
 
 Description of different output files.
 
+* [summary](summary/)
+
 #### Input
 
 At least two files are required: a sequencing platform output file (R1), and a `pat_files` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.

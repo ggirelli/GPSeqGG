@@ -1,6 +1,7 @@
 F.A.Q.
 ===
 
+* What do the `summary` columns mean?
 * What can I do if I get the following "!!! ERROR!" message?
 	 * [Invalid -i option, folder not found.](#invalid--i-option-folder-not-found)
 	 * [Invalid -a option. Available values: 'bwa', 'bowtie2'.](#invalid--a-option-available-values-bwa-bowtie2)
@@ -14,6 +15,10 @@ F.A.Q.
 	 * [Missing columns in pat_files, row X. Expected 4 columns, found Y.](#missing-columns-in-pat_files-row-x-expected-4-columns-found-y)
 	 * [Missing pat_files.](#missing-pat_files)
 	 * [No R1/R2 files found for $expID.](#no-r1r2-files-found-for-expid)
+
+## What do the `summary` columns mean?
+
+Visit the [summary description page](../summary/) for more details.
 
 ## What can I do if I get the following "!!! ERROR!" message?
 
