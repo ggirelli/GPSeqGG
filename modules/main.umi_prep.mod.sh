@@ -96,8 +96,8 @@ function prepare_umi() {
 				-f $csList  -t "$trackName"
 
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.atcs.bed \
-				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
+			cp $cout/$condition/UMIpos.unique.atcs.bed \
+				$out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		else
 			# Update bed header
 			trackName="$trackName,atcs=F\""
@@ -107,8 +107,8 @@ function prepare_umi() {
 				-c $cutsite -t "$trackName"
 
 			# Save bed
-			cat $cout/$condition/UMIpos.unique.bed \
-				>> $out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
+			cp $cout/$condition/UMIpos.unique.bed \
+				$out/$expID"_"$condition"_GG__cutsiteLoc-umiCount.bed"
 		fi
 
 		# Update summary -------------------------------------------------------
