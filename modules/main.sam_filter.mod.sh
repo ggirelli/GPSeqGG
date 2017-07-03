@@ -21,11 +21,10 @@ function filter_sam() {
 	mapqthr=$v
 
 	# Update summary header
-	new_fields="\tsecondary_aln\tchimeras\tunmapped\tr2\tmapq < $mapqthr\trmChr"
-	new_fields="$new_fields\tumis\tumis/prefix"
-	head -n 1 $outcontrol/summary_pattern | \
-		awk -v nf="$new_fields" "{ print \$0 nf }" - \
-		> $outcontrol/summary_sam_filter
+	header=`head -n 1 $outcontrol/summary_pattern`
+	header="$header\tsecondary_aln\tchimeras\tunmapped\tr2\tmapq < $mapqthr\trmChr"
+	header="$header\tumis\tumis/prefix"
+	echo -e "$header" > $outcontrol/summary_sam_filter
 
 	for condition in "${condv[@]}"; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."

@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 1.0.0
+# Version: 1.0.1
 # Description: module for UMI preparation.
 # 
 # ------------------------------------------------------------------------------
@@ -25,13 +25,12 @@ function prepare_umi() {
 	maskfile=$v
 
 	# Update summary header
-	new_fields="\tunmasked\tunmasked/umis"
-	new_fields="$new_fields\tassigned_to_cs\tto_cs/unmasked"
-	new_fields="$new_fields\tpass_read_qc\tread_qc/to_cs"
-	new_fields="$new_fields\tunique_umis\tunique/read_qc"
-	head -n 1 $outcontrol/summary_sam_filter | \
-		awk -v nf="$new_fields" "{ print \$0 nf }" - \
-		> $outcontrol/summary_umi_prep
+	header=`head -n 1 $outcontrol/summary_sam_filter`
+	header="$header\tunmasked\tunmasked/umis"
+	header="$header\tassigned_to_cs\tto_cs/unmasked"
+	header="$header\tpass_read_qc\tread_qc/to_cs"
+	header="$header\tunique_umis\tunique/read_qc"
+	echo -e "$header" > $outcontrol/summary_umi_prep
 
 	function prepare_umi_single_condition() {
 		echo -e "\nPreparing UMIs from condition '$condition'..."

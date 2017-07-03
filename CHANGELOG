@@ -4,6 +4,8 @@ v1.0.1
 * Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
 * Counting UMI duplicates during strict deduplication step.
 * Optimized read quality filter memory usage.
+* Fixed bed file creation: multiple pipeline run would append new bed files to old ones.
+* Change summary update method to avoid creationg of broken lines.
 
 v1.0.0
 ===

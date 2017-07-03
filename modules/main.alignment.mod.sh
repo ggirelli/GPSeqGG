@@ -17,11 +17,10 @@ function alignment() {
 	echo -e 'Alignment\n====================='
 
 	# Update summary header
-	new_fields="\tmapped\tmapped/prefix\tproperly_paired"
-	new_fields="$new_fields\tproperly_paired/prefix\tinter_chr"
-	head -n 1 $outcontrol/summary_pattern | \
-		awk -v nf="$new_fields" "{ print \$0 nf }" - \
-		> $outcontrol/summary_align
+	header=`head -n 1 $outcontrol/summary_pattern`
+	header="$header\tmapped\tmapped/prefix\tproperly_paired"
+	header="$header\tproperly_paired/prefix\tinter_chr"
+	echo -e "$header" > $outcontrol/summary_align
 
 	patfiles="$indir/pat_files"
 	for condition in "${condv[@]}"; do
