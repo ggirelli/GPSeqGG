@@ -54,10 +54,17 @@ function filter_sam() {
 			flags="-r $flags"
 		fi
 
-		# Filter SAM
-		time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
-			-mt $mapqThr -cs $cutsite -c $threads $flags & pid0=$!
-		wait $pid0
+		if [ -z "$cutsite" ]; then
+			# Filter SAM
+			time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
+				-mt $mapqThr --no-cutsite -c $threads $flags & pid0=$!
+			wait $pid0
+		else
+			# Filter SAM
+			time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
+				-mt $mapqThr -cs $cutsite -c $threads $flags & pid0=$!
+			wait $pid0
+		fi
 
 		# Update summary -------------------------------------------------------
 
