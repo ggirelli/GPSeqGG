@@ -135,7 +135,7 @@ if [[ 1 -eq $paired ]]; then
 
 # Single-end alignment ---------------------------------------------------------
 else
-	echo " · Performing single-end alingment ..."
+	echo " · Performing single-end alignment ..."
 
 	# BWA alignment
 	if [ -n "$aligner" -a "bwa" == "$aligner" ]; then

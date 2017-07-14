@@ -17,7 +17,7 @@ The columns added by this step are obtained through `samtools flagstats` and are
 - **mapped**: number of generated alignments
 - **mapped/prefix**: **WRONG**, please ignore this field
 - **properly_paired**: number of properly paired fragments (for pair-end sequencing)
-- **properly_paired/prefix**: fractiion or percentage of properly paired fragments (for pair end sequencing)
+- **properly_paired/prefix**: fraction or percentage of properly paired fragments (for pair end sequencing)
 - **inter_chr**: number of fragment pairs mapped to different chromosomes (i.e., chimeras)
 
 ### Alignment filtering
