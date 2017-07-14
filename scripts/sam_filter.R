@@ -32,6 +32,8 @@ parser = add_argument(parser, arg = 'condition',
 	help = 'Condition folder name (e.g., 400U2h).')
 
 # Define elective arguments
+parser = add_argument(parser, arg = '--no-cutsite', flag = T,
+	help = 'Used blunt linker, thus not cutsite sequence.')
 parser = add_argument(parser, arg = '--cutsite', short = '-cs',
 	default = 'AAGCTT',
 	help = 'Cutsite sequence (e.g., for HindIII AAGCTT).')
@@ -281,8 +283,10 @@ notes = paste0(notes, round(mean(move$move, na.rm = T), 2),
 mt$pos[mt$flag %in% rc] <- mt$pos[mt$flag %in% rc] + move$move[
 	match(mt$cigar[mt$flag %in% rc], move$cigar)]
 
-# Apply CS-based shift
-mt$pos[!mt$flag %in% rc] <- mt$pos[!mt$flag %in% rc] - nchar(cutsite)
+if ( !no_cutsite ) {
+	# Apply CS-based shift
+	mt$pos[!mt$flag %in% rc] <- mt$pos[!mt$flag %in% rc] - nchar(cutsite)
+}
 
 # Output 2 ---------------------------------------------------------------------
 

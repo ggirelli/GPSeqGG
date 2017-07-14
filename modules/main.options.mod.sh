@@ -26,7 +26,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
  Required files:
   Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
   input directory (inDir). The patterns file should have a condition per row
-  with condition name, pattern (scan_for_mateches format), cutsite sequence and
+  with condition name, pattern (scan_for_matches format), cutsite sequence and
   non-genomic portion length, separated by tabulations.
 
  Mandatory arguments:
