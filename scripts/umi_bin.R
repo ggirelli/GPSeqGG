@@ -203,7 +203,17 @@ umi_tab <- lapply(conditions,
 		# Retrieve UMIs
 		cat(paste0('\n · Retrieve UMIs for "', condition , '"...\n'))
 		fname <- 'UMIpos.unique'
-		if ( cutsites ) fname <- paste0(fname, '.atcs')
+		if ( cutsites ) {
+			fname <- paste0(fname, '.atcs')
+			if ( !file.exists(paste0(dirpath, '/conditions/', condition, '/',
+				fname, suff, '.txt')) ) {
+				msg = paste0(' \n\nThe specified file does not exist:\n',
+					' ', condition, '/', fname, suff, '.txt\n',
+					'Probably need to re-run the UMI preparation step,\n',
+					'while providing a proper cutsite list.\n\n')
+				stop(msg)
+			}
+		}
 		u <- read.delim(paste0(dirpath, '/conditions/', condition, '/',
 			fname, suff, '.txt'), as.is = T, header = F)
 		colnames(u) <- c('chr', 'pos', 'seq')

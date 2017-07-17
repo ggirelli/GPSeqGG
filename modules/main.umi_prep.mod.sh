@@ -16,14 +16,6 @@
 function prepare_umi() {
 	echo -e 'UMI grouping & deduplicating\n=====================\n'
 
-	# Get cutsite list file by input
-	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
-	cutsitelist=$v
-
-	# Get maskfile by input
-	input_fname 'Mask file' 'a list of regions to be masked' $maskFile
-	maskfile=$v
-
 	# Update summary header
 	header=`head -n 1 $outcontrol/summary_sam_filter`
 	header="$header\tunmasked\tunmasked/umis"

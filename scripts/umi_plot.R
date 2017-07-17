@@ -36,10 +36,10 @@ parser = add_argument(parser, arg = 'cutsites',
 	help = 'File containing the cutsite positions. (chr|pos)')
 parser = add_argument(parser, arg = 'chrlengths',
 	help = 'File containing the chromosome lengths. (chr|len)')
-parser = add_argument(parser, arg = 'mask',
-	help = 'File containing the masked regions. (num|chr|start|end|type)')
 
 # Define elective arguments
+parser = add_argument(parser, arg = '--mask',, short = '-m',
+	help = 'File containing the masked regions. (num|chr|start|end|type)')
 parser = add_argument(parser, arg = '--neg', short = '-n',
 	help = 'Negative condition label.',
 	default = '', nargs = 1)
@@ -114,11 +114,13 @@ neg_id = ifelse(0 == length(neg_id), 0, neg_id)
 n0n = numeric(0)
 mf_ori = NULL
 mf = NULL
-if ( 0 != file.info(mask)$size ) {
-	mf_ori = read.delim(mask, header = F, as.is = T)
-	colnames(mf_ori) = c('num', 'chr', 'start', 'end', 'type')
-	mf = mf_ori[, 2:5]
-	mf$type = 'masked'
+if ( file.exists(mask) ) {
+	if ( 0 != file.info(mask)$size ) {
+		mf_ori = read.delim(mask, header = F, as.is = T)
+		colnames(mf_ori) = c('num', 'chr', 'start', 'end', 'type')
+		mf = mf_ori[, 2:5]
+		mf$type = 'masked'
+	}
 }
 
 dt = mf

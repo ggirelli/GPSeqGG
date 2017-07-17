@@ -66,7 +66,8 @@ if ( file.exists(cutsites) ) {
 	colnames(el) <- c('chr', 'pos')
 
 	# Count cutsites per bin ---------------------------------------------------
-	cat('Counting cutsites per bin, bin_size:', bin_size, ' ...\n')
+	cat('Counting cutsites per bin, bin_size:', bin_size,
+		'; bin_step:', bin_step, '...\n')
 
 	# Per chromosome
 	csbin <- by(el, el$chr,

@@ -331,7 +331,6 @@ settings="$settings
  Bin step: $binStep nt
 
  Neatness level: $neatness (${neatness_labels[$neatness]})
-
 "
 # Chromosome removal
 if $rmX; then
