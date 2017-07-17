@@ -1,5 +1,7 @@
-gpseq-seq-gg v1.0.1
+gpseq-seq-gg v1.1.0a
 ===
+
+**!NOTE! This is version is in development. Use one of the snapshot branches (last version v1.0.1) for stable and tested versions of the pipeline.**
 
 A pipeline for Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis. More details in the [docs](docs/).
 
