@@ -39,8 +39,8 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
   -x	Remove X chromosome after alignment.
   -y	Remove Y chromosome after alignment.
   -t threads	Number of threads for parallelization.
-  -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
   -g refGenome	Path to reference genome file. Default: 'hg19'.
+  -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
   -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
   -q mapqThr	Mapping quality threshold. Default: 30.
   -p platform	Sequencing platform. Default: 'L'.
@@ -50,13 +50,15 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
   -k eperc	Maximum % of bases with emax error probability. Default: 20.
   -z binSize	Bin size. Default: 1e6.
   -b binStep	Bin step. Default: 1e5.
+  -c cutsite	Cutsite sequence, needed for read re-position. Default: AAGCTT.
   -l csList	File with cutsite list. Columns: chr|pos. No header.
   -m maskFile	File with masked regions. Columns: id|chr|start|end. No header.
   -s chrLengths	File with chromosome lengths. chr|len. No header.
+  -n neatness	Neatness level: 0 (heavy), 1 (light), 2 (lightest). Default: 1.
 "
 
 # Default values
-dontask=0
+dontask=false
 threads=1
 rmX=false
 rmY=false
@@ -71,9 +73,17 @@ binStep=1e5
 pthr=0
 emax=1e-3
 eperc=20
+cutsite="AAGCTT"
+neatness=1
+
+neatness_labels=()
+neatness_labels+=('heavy')
+neatness_labels+=('light')
+neatness_labels+=('lightest')
+
 
 # Parse options
-while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
+while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 	case $opt in
 		h)
 			# Help
@@ -82,15 +92,15 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 		;;
 		w)
 			# Automatic
-			dontask=1
+			dontask=true
 		;;
-		t)
-			# Threads
-			if [ 0 -ge "$OPTARG" ]; then
-				echo -e "Enforcing a minimum of 1 thread.\n"
-			else
-				threads=$OPTARG
-			fi
+		x)
+			# Remove chrX after alignment
+			rmX=true
+		;;
+		y)
+			# Remove chrY after alignment
+			rmY=true
 		;;
 		i)
 			# Input directory
@@ -108,6 +118,14 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			if [ ! -d "$OPTARG" ]; then
 				msg="Output folder not found, creating it."
 				mkdir -p $outdir
+			fi
+		;;
+		t)
+			# Threads
+			if [ 0 -ge "$OPTARG" ]; then
+				echo -e "Enforcing a minimum of 1 thread.\n"
+			else
+				threads=$OPTARG
 			fi
 		;;
 		g)
@@ -134,14 +152,6 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				exi 1
 			fi
 		;;
-		x)
-			# Remove chrX after alignment
-			rmX=true
-		;;
-		y)
-			# Remove chrY after alignment
-			rmY=true
-		;;
 		q)
 			# Mapping quality threshold
 			mapqThr=$OPTARG
@@ -158,6 +168,14 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			# Range around cutsite
 			csRange=$OPTARG
 		;;
+		j)
+			# Maximum error probability for read quality filtering
+			emax=$OPTARG
+		;;
+		k)
+			# Maximum % of bases with emax error probability
+			eperc=$OPTARG
+		;;
 		z)
 			# Bin size in nt
 			binSize=$OPTARG
@@ -166,11 +184,9 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 			# Bin step nin nt
 			binStep=$OPTARG
 		;;
-		j)
-			emax=$OPTARG
-		;;
-		k)
-			eperc=$OPTARG
+		c)
+			# Cutsite sequence
+			cutsite=$OPTARG
 		;;
 		l)
 			# File with cutsite list
@@ -200,6 +216,17 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				msg="Invalid -s option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n!!! ERROR! $msg"
 				exit 1
+			fi
+		;;
+		n)
+			if [ 0 -gt "$OPTARG" ]; then
+				neatness=0
+			else
+				if [ 2 -lt "$OPTARG" ]; then
+					neatness=2
+				else
+					neatness=$OPTARG
+				fi
 			fi
 		;;
 	esac
@@ -234,9 +261,9 @@ if [ -e "$indir/patterns.tsv" ]; then
 		nc=`echo "$row" | awk '{ n=split($0, t, "\t"); print n; }' | uniq`
 
 		# Check field number
-		if [ 5 -ne $nc ]; then
+		if [ 4 -ne $nc ]; then
 			msg="!!! Wrong column number in patterns.tsv, row $i.\n"
-			msg="$msg    Expected 5 columns, found $nc."
+			msg="$msg    Expected 4 columns, found $nc."
 			echo -e "$helps\n$msg"
 			exit 1
 		fi
@@ -261,7 +288,7 @@ fi
 settings="
 # SETTINGS
 "
-if [ 1 -eq $dontask ]; then
+if $dontask; then
 	settings="$settings
  Perform EVERY step of the pipeline.
 "
@@ -274,8 +301,7 @@ settings="$settings
 
 settings=$settings"\n\n Pattern instructions:\n"
 
-patterns=" experiment_id\tcondition_label\tlinker_pattern"
-patterns=$patterns"\ttrim_length\tcutsite_seq\n"
+patterns=" experiment_id\tcondition_label\tlinker_pattern\ttrim_length\n"
 patterns=$(echo -e $patterns$(cat -t $indir/patterns.tsv | tr '\n' '\t' | \
 	sed 's/\t/\\n/g' | sed 's/\^I/\\t/g') | column -c 5 -s $'\t' -t)
 settings=$settings"$patterns"
@@ -296,12 +322,15 @@ settings="$settings
  Platforhm: $platform
 
  UMI length: $umiLength nt
+ Cutsite seq: $cutsite
  Cutsite range: $csRange nt
  Max error probability: $emax
  Max emax bases percentage: $eperc%
 
  Bin size: $binSize nt
  Bin step: $binStep nt
+
+ Neatness level: $neatness (${neatness_labels[$neatness]})
 
 "
 # Chromosome removal

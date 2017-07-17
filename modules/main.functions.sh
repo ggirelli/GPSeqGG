@@ -50,15 +50,15 @@ function execute_step() {
 	# If $opt == 1 then the step is automatically executed.
 	
 	if [ "$#" -lt 3 ]; then
-		echo -e "Correct usage: execute_step $opt step_name funcname\n"
+		echo -e "Correct usage: execute_step dontask step_name funcname\n"
 		exit 1
 	fi
 	
-	opt=$1
+	dontask=$1
 	step=$2
 	f=$3
 
-	if [[ $opt == 1 ]]; then
+	if $dontask; then
 		ans='y'
 	else
 		msg="\nRun $step?\nYes (y), Skip (s), Abort (a)"

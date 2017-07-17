@@ -10,43 +10,42 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
  [-b binStep][-l csList][-m maskFile][-s chrLengths]
 
  Description:
-	Run a step-by-step interactive GPSeq sequencing data analysis.
+  Run a step-by-step interactive GPSeq sequencing data analysis.
 
  Required files:
-	Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
-	input directory (inDir). The patterns file should have a condition per row
-	with condition name, pattern (scan_for_mateches format), cutsite sequence and
-	non-genomic portion length, separated by tabulations.
+  Requires R1 (and R2 if paired-end sequencing) and a pattern files in the
+  input directory (inDir). The patterns file should have a condition per row
+  with condition name, pattern (scan_for_matches format), cutsite sequence and
+  non-genomic portion length, separated by tabulations.
 
  Mandatory arguments:
-	-i indir      Input directory.
-	-o outdir     Output directory. Created if not found.
-	-e expID      Experiment ID.
+  -i indir	Input directory.
+  -o outdir	Output directory. Created if not found.
 
  Optional arguments:
-	-h            Show this help page.
-	-w            Perform every step of the pipeline without asking.
-	-n            Negative present. Expected label: neg;
-	-x            Remove X chromosome after alignment.
-	-y            Remove Y chromosome after alignment.
-	-t threads    Number of threads for parallelization.
-	-a aligner    Aligner. Either 'bwa' (default) or 'bowtie2'.
-	-g refGenome  Path to reference genome file. Default: 'hg19'.
-	-d bwaIndex   Path to BWA index file. Required if BWA is the selected aligner.
-	-q mapqThr    Mapping quality threshold. Default: 1.
-	-p platform   Sequencing platform. Default: 'L'.
-	-u umilength  UMI sequence length. Default: 8.
-	-r csRange    Range around cutsite for UMI assignment. Default: 40.
-	-j emax       Maximum error probability for read quality filtering. Default: 1e-3.
-	-k eperc      Maximum % of bases with emax error probability. Default: 20.
-	-z binSize    Bin size. Default: 1e6.
-	-b binStep    Bin step. Default: 1e5.
-	-l csList     File with cutsite list. Columns: chr|pos. No header.
-	-m maskFile   File with masked regions. Columns: id|chr|start|end. No header.
-	-s chrLengths File with chromosome lengths. chr|len. No header.
+  -h	Show this help page.
+  -w	Perform every step of the pipeline without asking.
+  -x	Remove X chromosome after alignment.
+  -y	Remove Y chromosome after alignment.
+  -t threads	Number of threads for parallelization.
+  -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
+  -g refGenome	Path to reference genome file. Default: 'hg19'.
+  -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
+  -q mapqThr	Mapping quality threshold. Default: 30.
+  -p platform	Sequencing platform. Default: 'L'.
+  -u umilength	UMI sequence length. Default: 8.
+  -r csRange	Range around cutsite for UMI assignment. Default: 40.
+  -j emax	Maximum error probability for read quality filtering. Default: 1e-3.
+  -k eperc	Maximum % of bases with emax error probability. Default: 20.
+  -z binSize	Bin size. Default: 1e6.
+  -b binStep	Bin step. Default: 1e5.
+  -l csList	File with cutsite list. Columns: chr|pos. No header.
+  -m maskFile	File with masked regions. Columns: id|chr|start|end. No header.
+  -s chrLengths	File with chromosome lengths. chr|len. No header.
+
 ```
 
-#### Pipeline steps
+### Pipeline steps
 
 The steps performed by `main` are the following:
 
@@ -62,8 +61,8 @@ The steps performed by `main` are the following:
 5. Filters the SAM file. (this step requires a specified `mapqthr` setting)
 		* Run `./sam_filter`.
 6. Prepare UMIs. If a `maskfile` was specified, UMIs are masked based on the information contained in such file.
-		* Run `./umi_group` to group UMIs on the same position.
-		* Run `./pos2cutsite` to group UMIs on a cutsite
+		* Run `./umi_group` to group UMIs that are mapped on the same position.
+		* Run `./pos2cutsite` to group UMIs on a cutsite if a list of known cutsites is provided.
 		* Run `./umi_dedupl` to deduplicate UMIs.
 7. Performs binning.
 		* Run `./cs_bin` to bin the cutsites.
@@ -71,33 +70,46 @@ The steps performed by `main` are the following:
 8. Analyzes UMIs.
 		* Run `./umi_plot` to generate analysis results as figures.
 
-#### Output
+### Output
 
-Description of different output files.
+The output folder will contain:
 
-* [summary](summary/)
+* A `CMD` file, with the last command line used to run the pipeline.
+* A `log` folder, with the logs divided by timestamp (i.e., based on when the pipeline was run).
+* A folder per experiment specified in the `patterns.tsv` file.
 
-#### Input
+Each experiment folder will contain:
+
+* An `aux` folder, with secundary results. The `fastqc` report is saved here.
+* A `conditions` folder, containing a sub-folder per condition.
+* A `log` folder, with the logs divided by timestamp (i.e., based on when the pipeline was run).
+* A `plots` folder containing the generated plots.
+* A detailed `summary` table with the number of reads passing each pipeline step. [Explanation of `summary` columns](summary/).
+* A `tmp` folder, containing intermediate data.
+
+Each condition folder will contain:
+
+* 
+
+### Input
 
 At least two files are required: a sequencing platform output file (R1), and a `patterns.tsv` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
 
 The `patterns.tsv` file, which is expected to be located in the input folder, contains a row per condition per experiment. Every row contains the following tab-separated information:
 
 ```
-experiment_ID	condition_label	scan_for_matches_pattern	trimming_length	[cutsite_sequence]
+experiment_ID	condition_label	scan_for_matches_pattern	trimming_length
 ```
 
 An example being the following:
 
 ```
-TK20	neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	22	AAGCTT
-TK20	1min	^ 8...8 CATCATCC 1...1000 $	18	
-TK21	1min	^ 8...8 GTCGTTCC 1...1000 $	16	
-TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22	AAGCTT
+TK20	neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	22
+TK20	1min	^ 8...8 CATCATCC 1...1000 $	18
+TK21	1min	^ 8...8 GTCGTTCC 1...1000 $	16
+TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22
 ```
 
-Please, note that the last column (cutsite_sequence) can be empty, but must be present (i.e., a final tabulation is required). Otherwise, a `Wrong column number in patterns.tsv, row X. Expected 5 columns, found 4.` error is triggered.
-
-## Other scripts
+### Sub-scripts
 
 ...

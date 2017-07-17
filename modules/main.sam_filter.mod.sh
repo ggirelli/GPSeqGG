@@ -29,10 +29,6 @@ function filter_sam() {
 	for condition in ${condv[@]}; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
-		# Retrieve cutsite sequence
-		cutsite=`grep -P "$expID\t$condition" "$indir/patterns.tsv" | \
-			cut -f 5 | head -n 1`
-
 		# Count condition total reads
 		echo -e "Counting condition reads..."
 		cond_count=`cat $cout/$condition/filtered.r1.fa | paste - - | \

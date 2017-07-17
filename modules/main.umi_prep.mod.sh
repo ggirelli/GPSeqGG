@@ -40,10 +40,6 @@ function prepare_umi() {
 			cslbool=1
 		fi
 
-		# Retrieve cutsite sequence
-		cutsite=`grep -P "$expID\t$condition" "$indir/patterns.tsv" | \
-			cut -f 5 | head -n 1`
-
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n "$maskFile" ]]; then
 			time $scriptdir/umi_group.py $cout/$condition/ $expID $condition \

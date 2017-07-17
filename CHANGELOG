@@ -1,13 +1,21 @@
 v1.1.0
 ---
 
-* Fixed bug in SAM filter that crashed the script if no chromosome is removed.
-* Renamed pat_files to patterns.tsv.
+Major changes:
+* Added neatness level for automatic clean-up of intermediate files.
+* Moved cutsite sequence from pattern to single option.
 * Implemented multi-library analysis.
+* Renamed pat_files to patterns.tsv.
+
+Minor changes:
+* Fixed bug in SAM filter that crashed the script if no chromosome is removed.
 * Divided log by library.
+* Removed sub-step queries for filepaths.
 
 v1.0.1
 ===
+
+Released on 20171717 before starting the implementation of v1.1.0.
 
 * Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
 * Counting UMI duplicates during strict deduplication step.
