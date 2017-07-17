@@ -40,7 +40,7 @@ logpath="$log/$expID.log"
 # START LOG --------------------------------------------------------------------
 line=""
 for (( i = 1; i < $(echo "# $expID #" | wc -c); i++ )); do line=$line"#"; done
-echo -e $line"\n# $expID #\n"$line"\n"
+echo -e "\n"$line"\n# $expID #\n"$line"\n"
 
 # IDENTIFY CONDITIONS ----------------------------------------------------------
 condv=$(cat $indir/patterns.tsv | grep $expID | cut -f 2)
@@ -99,7 +99,6 @@ execute_step $dontask 'SAM filtering' filter_sam
 source $moddir/main.umi_prep.mod.sh
 execute_step $dontask 'UMI preparation' prepare_umi
 
-exit 1
 # BIN --------------------------------------------------------------------------
 
 # Load binning module

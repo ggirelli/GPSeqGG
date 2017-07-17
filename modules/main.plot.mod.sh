@@ -15,6 +15,7 @@
 
 function plot_umi() {
 	echo -e 'Plotting\n=====================\n'
+	can_plot=true
 
 	# Get cutsite list file by input
 	input_fname 'Cutsite list file' 'a list of cutsite positions' $csList
@@ -38,34 +39,36 @@ function plot_umi() {
 	maskFile=$v
 	if [ -z "$maskFile" ]; then
 		msg="A list of masked regions is required for the plot step."
-		msg="$msg\nExit."
 		echo -e "$msg"
-		exit 1
+		can_plot=false
 	fi
 
-	# Get chrlengths by input
-	input_fname 'Chr length file' \
-		'lengths of chromosomes in the specified genome version' $chrLengths
-	chrLengths=$v
-	if [ -z "$chrLengths" ]; then
-		msg="A list of chromosome lengths is required for the plot step."
-		msg="$msg\nExit."
-		echo -e "$msg"
-		exit 1
+	if $can_plot; then
+		# Get chrlengths by input
+		input_fname 'Chr length file' \
+			'lengths of chromosomes in the specified genome version' $chrLengths
+		chrLengths=$v
+		if [ -z "$chrLengths"]; then
+			msg="A list of chromosome lengths is required for the plot step."
+			echo -e "$msg"
+			can_plot=false
+		fi
 	fi
 
-	# Make multi-condition plots -----------------------------------------------
-	
-	# Prepare flags for heterochromosomes removal
-	flags=""
-	if [ "$rmX" = true ]; then flags="$flags --rmChrX"; fi
-	if [ "$rmY" = true ]; then flags="$flags --rmChrY"; fi
-	if [[ -n $neg ]]; then flags="$flags --neg $neg"; fi
+	if $can_plot; then
+		# Make multi-condition plots -------------------------------------------
+		
+		# Prepare flags for heterochromosomes removal
+		flags=""
+		if [ "$rmX" = true ]; then flags="$flags --rmChrX"; fi
+		if [ "$rmY" = true ]; then flags="$flags --rmChrY"; fi
+		if [[ -n $neg ]]; then flags="$flags --neg $neg"; fi
 
-	# Run plotting script
-	$scriptdir/umi_plot.R $flags -i $binSize -t $binStep -c $threads \
-		$out/ $expID $conds $csList $chrLengths $maskFile & pid0=$!
-	wait $pid0
+		# Run plotting script
+		$scriptdir/umi_plot.R $flags -i $binSize -t $binStep -c $threads \
+			$out/ $expID $conds $csList $chrLengths $maskFile & pid0=$!
+		wait $pid0
+	fi
 }
 
 ################################################################################

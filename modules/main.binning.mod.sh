@@ -42,22 +42,30 @@ function bin_step() {
 		cslbool=1
 	fi
 
-	# Bin cutsites -------------------------------------------------------------
-	echo -e "\nBinning cutsites ..."
-	time $scriptdir/cs_bin.R -i $binSize -t $binStep -c $threads \
-		$xout $csList $chrLengths & pid0=$!
-	wait $pid0
-
-	# Bin UMIs -----------------------------------------------------------------
-	echo -e "\nBinning UMIs ..."
-	if [ -z "$csList" ]; then
-		$scriptdir/umi_bin.R -i $binSize -t $binStep -p $threads \
-			$out/ $expID $conds $chrLengths & pid0=$!
+	if [ -e "$csList" ]; then
+		# Bin cutsites -------------------------------------------------------------
+		echo -e "\nBinning cutsites ..."
+		time $scriptdir/cs_bin.R -i $binSize -t $binStep -c $threads \
+			$xout $csList $chrLengths & pid0=$!
+		wait $pid0
 	else
-		$scriptdir/umi_bin.R -c -i $binSize -t $binStep -p $threads \
-			$out/ $expID $conds $chrLengths & pid0=$!
+		echo -e "\nSkipped cutsite binning ..."
 	fi
-	wait $pid0
+
+	if [ -e "$chrLengths" ]; then
+		# Bin UMIs -----------------------------------------------------------------
+		echo -e "\nBinning UMIs ..."
+		if [ -z "$csList" ]; then
+			$scriptdir/umi_bin.R -i $binSize -t $binStep -p $threads \
+				$out/ $expID $conds $chrLengths & pid0=$!
+		else
+			$scriptdir/umi_bin.R -c -i $binSize -t $binStep -p $threads \
+				$out/ $expID $conds $chrLengths & pid0=$!
+		fi
+		wait $pid0
+	else
+		echo -e "\nSkipped UMI binning ..."
+	fi
 }
 
 ################################################################################

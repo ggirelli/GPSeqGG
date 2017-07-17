@@ -48,13 +48,13 @@ clear
 
 # Start
 echo -e "$settings
-START\n=====================\n"
+START\n====================="
 
 source $moddir/main.library_run.mod.sh
 
 # RUN BY LIBRARY ---------------------------------------------------------------
 
-for exp in "${expv[@]}"; do library_run $exp; done
+for exp in ${expv[@]}; do library_run $exp; done
 
 # END --------------------------------------------------------------------------
 
