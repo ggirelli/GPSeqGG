@@ -11,6 +11,7 @@ Minor changes:
 * Fixed bug in SAM filter that crashed the script if no chromosome is removed.
 * Divided log by library.
 * Removed sub-step queries for filepaths.
+* Orphan reads saved in orphan.txt.
 
 v1.0.1
 ===
