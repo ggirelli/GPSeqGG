@@ -19,30 +19,31 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
   non-genomic portion length, separated by tabulations.
 
  Mandatory arguments:
-  -i indir	Input directory.
-  -o outdir	Output directory. Created if not found.
+  -i indir  Input directory.
+  -o outdir Output directory. Created if not found.
 
  Optional arguments:
-  -h	Show this help page.
-  -w	Perform every step of the pipeline without asking.
-  -x	Remove X chromosome after alignment.
-  -y	Remove Y chromosome after alignment.
-  -t threads	Number of threads for parallelization.
-  -a aligner	Aligner. Either 'bwa' (default) or 'bowtie2'.
-  -g refGenome	Path to reference genome file. Default: 'hg19'.
-  -d bwaIndex	Path to BWA index file. Required if BWA is the selected aligner.
-  -q mapqThr	Mapping quality threshold. Default: 30.
-  -p platform	Sequencing platform. Default: 'L'.
-  -u umilength	UMI sequence length. Default: 8.
-  -r csRange	Range around cutsite for UMI assignment. Default: 40.
-  -j emax	Maximum error probability for read quality filtering. Default: 1e-3.
-  -k eperc	Maximum % of bases with emax error probability. Default: 20.
-  -z binSize	Bin size. Default: 1e6.
-  -b binStep	Bin step. Default: 1e5.
-  -l csList	File with cutsite list. Columns: chr|pos. No header.
-  -m maskFile	File with masked regions. Columns: id|chr|start|end. No header.
-  -s chrLengths	File with chromosome lengths. chr|len. No header.
-
+  -h  Show this help page.
+  -w  Perform every step of the pipeline without asking.
+  -x  Remove X chromosome after alignment.
+  -y  Remove Y chromosome after alignment.
+  -t threads  Number of threads for parallelization.
+  -g refGenome  Path to reference genome file. Default: 'hg19'.
+  -a aligner  Aligner. Either 'bwa' (default) or 'bowtie2'.
+  -d bwaIndex Path to BWA index file. Required if BWA is the selected aligner.
+  -q mapqThr  Mapping quality threshold. Default: 30.
+  -p platform Sequencing platform. Default: 'L'.
+  -u umilength  UMI sequence length. Default: 8.
+  -r csRange  Range around cutsite for UMI assignment. Default: 40.
+  -j emax Maximum error probability for read quality filtering. Default: 1e-3.
+  -k eperc  Maximum % of bases with emax error probability. Default: 20.
+  -z binSize  Bin size. Default: 1e6.
+  -b binStep  Bin step. Default: 1e5.
+  -c cutsite  Cutsite sequence, needed for read re-position. Default: AAGCTT.
+  -l csList File with cutsite list. Columns: chr|pos. No header.
+  -m maskFile File with masked regions. Columns: id|chr|start|end. No header.
+  -s chrLengths File with chromosome lengths. chr|len. No header.
+  -n neatness Neatness level: 0 (heavy), 1 (light), 2 (lightest). Default: 1.
 ```
 
 ### Pipeline steps
@@ -87,10 +88,6 @@ Each experiment folder will contain:
 * A detailed `summary` table with the number of reads passing each pipeline step. [Explanation of `summary` columns](summary/).
 * A `tmp` folder, containing intermediate data.
 
-Each condition folder will contain:
-
-* 
-
 ### Input
 
 At least two files are required: a sequencing platform output file (R1), and a `patterns.tsv` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
@@ -112,4 +109,4 @@ TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22
 
 ### Sub-scripts
 
-...
+Every script in the `scripts` folder comes with a help page accessible by running `./script -h`.

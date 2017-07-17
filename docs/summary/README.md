@@ -43,4 +43,5 @@ The columns added by this step replace those generated in the *read alignment* s
 - **read_qc/non_orph**: fraction or percentage of reads assigned to a known cutsite that pass the read quality filter
 - **unique_umis**: number of de-duplicated reads that pass all the filtering steps
 - **unique_read/read_qc**: fraction or percentage of deduplicated reads that pass all the previous filtering
+- **final/prefix**: fraction or percentage of reads with prefix that pass all previous filtering
 
