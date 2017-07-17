@@ -14,7 +14,7 @@
 # START ========================================================================
 
 function prepare_umi() {
-	echo -e 'UMI grouping & deduplicating\n=====================\n'
+	echo -e 'UMI grouping & deduplicating\n====================='
 
 	# Update summary header
 	header=`head -n 1 $outcontrol/summary_sam_filter`

@@ -79,6 +79,7 @@ cat(paste0(' · Range: +-', bin_size / 2, '\n'))
 
 # Associate positions to cutsites ----------------------------------------------
 cat(' · Associating locations to cutsites ...\n')
+file.remove(paste0(dirpath, 'orphans.txt'))
 btt <- mclapply(split(umi, umi_num),
 	FUN = function(t, cs, bs) {
 		chr <- t$chr[1]
@@ -126,7 +127,12 @@ btt <- mclapply(split(umi, umi_num),
 		# Save assignment and remove orphan reads
 		t$mind <- ds$id
 		torm <- which(ds$d > bs / 2)
-		if ( 0 != length(torm) ) t <- t[-torm,]
+		if ( 0 != length(torm) ) {
+			# Write orphan read positions
+			write.table(t[torm,], file = paste0(dirpath, 'orphans.txt'),
+				append = T, col.names = F, row.names = F, quote = F, sep = "\t")
+			t <- t[-torm,]
+		}
 
 		# Move the UMIs together at the cutsite position
 		c <- rbindlist(mclapply(split(t, t$mind),

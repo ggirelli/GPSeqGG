@@ -12,7 +12,7 @@ Also, please visit the [how to page](docs/how-to/) and the [F.A.Q. page](docs/fa
 3. Align reads and filter SAM.
 4. Group and deduplicate UMIs (Unique Molecular Identifiers).
 5. Bin and plot.
-6. Analyzes UMIs.
+6. Advanced analysis.
 
 #### In development
 
