@@ -116,7 +116,7 @@ function library_run() {
 
 	if [ 2 -le $neatness ]; then
 		echo -e "\n~ Cleaning..."
-		rm -r $outcontrol
+		rm -r $outcontrol $in
 	fi
 
 	} &> >(tee $log/$timestamp.$expID.log)
