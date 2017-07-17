@@ -22,12 +22,13 @@ function alignment() {
 	header="$header\tproperly_paired/prefix\tinter_chr"
 	echo -e "$header" > $outcontrol/summary_align
 
-	patfiles="$indir/pat_files"
-	for condition in "${condv[@]}"; do
+	patfiles="$indir/patterns.tsv"
+	for condition in ${condv[@]}; do
 		echo -e "\nAligning reads from condition '$condition'..."
 
 		# Run trimmer ----------------------------------------------------------
-		time $scriptdir/reads_trim.sh -o $cout -c "$condition" -p $patfiles
+		time $scriptdir/reads_trim.sh -o $cout \
+			-e $expID -c "$condition" -p $patfiles
 
 		# Run aligner ----------------------------------------------------------
 		if [ -n "$bwaIndex" -a "bwa" == "$aligner" ]; then

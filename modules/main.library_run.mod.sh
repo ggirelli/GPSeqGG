@@ -81,13 +81,13 @@ execute_step $dontask 'file generation' file_generation
 source $moddir/main.pattern_filtering.mod.sh
 execute_step $dontask 'pattern_filtering' pattern_filtering
 
-exit 1
 # ALIGNMENT --------------------------------------------------------------------
 
 # Load alignment module
 source $moddir/main.alignment.mod.sh
 execute_step $dontask 'alignment' alignment
 
+exit 1
 # Filter SAM -------------------------------------------------------------------
 
 # Load sam filter module

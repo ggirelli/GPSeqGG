@@ -1,7 +1,9 @@
 v1.1.0
 ---
 
-* Implementing multi-library analysis.
+* Renamed pat_files to patterns.tsv.
+* Implemented multi-library analysis.
+* Divided log by library.
 
 v1.0.1
 ===

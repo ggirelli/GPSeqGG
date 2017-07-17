@@ -19,13 +19,14 @@ export LC_ALL=C
 
 # Help string
 helps="
- usage: ./reads_trim.sh [-h] -o outDir -c cond -p patFile
+ usage: ./reads_trim.sh [-h] -o outDir -e expID -c cond -p patFile
 
  Description:
   Trim linker from reads.
 
  Mandatory arguments:
-  -o outDir	Output directory. Created if not found.
+  -o outDir	Folder containing conditions.
+  -e expID	Experiment ID (same as in patFile).
   -c cond	Condition to analyze.
   -p patFile	Pattern file.
 
@@ -34,7 +35,7 @@ helps="
 "
 
 # Parse options
-while getopts ho:c:p: opt; do
+while getopts ho:e:c:p: opt; do
 	case $opt in
 		h)
 			echo -e "$helps\n"
@@ -43,9 +44,13 @@ while getopts ho:c:p: opt; do
 		o)
 			out_dir=$OPTARG
 			if [ ! -d "$OPTARG" ]; then
-				msg="Output folder not found, creating it."
-				mkdir -p $out_dir
+				msg="\n!!! Invalid -o value.\n"
+				echo -e $helps$msg"Output folder not found!"
+				exit 1
 			fi
+		;;
+		e)
+			expID=$OPTARG
 		;;
 		c)
 			condition=$OPTARG
@@ -54,7 +59,7 @@ while getopts ho:c:p: opt; do
 			if [ -e "$OPTARG" ]; then
 				patFile=$OPTARG
 			else
-				msg="Invalid -p option, vile not found.\nFile: $OPTARG"
+				msg="Invalid -p option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n$msg"
 				exit 1
 			fi
@@ -65,6 +70,10 @@ done
 # Check mandatory options
 if [ -z "$out_dir" ]; then
 	echo -e "$helps\n!!! Missing mandatory -o option.\n"
+	exit 1
+fi
+if [ -z "$expID" ]; then
+	echo -e "$helps\n!!! Missing mandatory -e option.\n"
 	exit 1
 fi
 if [ -z "$condition" ]; then
@@ -89,7 +98,7 @@ d="$out_dir/$condition/"
 # RUN ==========================================================================
 
 # Select non-genomic region length
-length=`grep "$condition" $patFile | cut -f 4`
+length=`grep -P "$expID\t$condition" $patFile | cut -f 4`
 echo -e " · Trimming the first $length bases (pattern file)."
 
 # TRIM -----------------------------------------------------------------
