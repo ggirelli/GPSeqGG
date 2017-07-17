@@ -21,7 +21,7 @@ function prepare_umi() {
 	header="$header\tunmasked\tunmasked/umis"
 	header="$header\tnon_orphan\tnon_orph/unmasked"
 	header="$header\tpass_read_qc\tread_qc/non_orph"
-	header="$header\tunique_umis\tunique/read_qc"
+	header="$header\tunique_umis\tunique/read_qc\tfinal/prefix"
 	echo -e "$header" > $outcontrol/summary_umi_prep
 
 	function prepare_umi_single_condition() {
@@ -99,6 +99,9 @@ function prepare_umi() {
 
 		# Update summary -------------------------------------------------------
 
+		# Prefix reads
+		npr=`grep -P "$expID\t$condition" $out/summary | cut -f 5 | head -n 1`
+
 		# Input reads
 		ir=`cat $cout/"$condition"/"$condition".umi_prep_notes.txt | \
 			grep 'input reads' | head -n 1 | cut -d ' ' -f 1`
@@ -124,12 +127,14 @@ function prepare_umi() {
 			grep 'UMIs left after deduplication' | head -n 1 | cut -d ' ' -f 1`
 		p4=`printf "%.2f%%" "$(bc <<< "scale = 4; $c4 / $c3 * 100")"`
 
+		# Final / prefix
+		fpr=`printf "%.2f%%" "$(bc <<< "scale = 4; $c4 / $npr * 100")"`
+
 		# Add to summary
-		new_fields="\t$c\t$p\t$c2\t$p2\t$c3\t$p3\t$c4\t$p4"
+		new_fields="\t$c\t$p\t$c2\t$p2\t$c3\t$p3\t$c4\t$p4\t$fpr"
 		grep "$condition" "$outcontrol/summary_sam_filter" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> $outcontrol/summary_umi_prep
-
 
 		# Clean ----------------------------------------------------------------
 		
@@ -137,8 +142,7 @@ function prepare_umi() {
 			echo -e "\n~ Cleaning..."
 			rm -v $cout/$condition/$condition* \
 				$cout/$condition/*.log \
-				$cout/$condition/summary \
-				$cout/$condition/UMIpos.*
+				$cout/$condition/summary
 		fi
 	}
 	for condition in ${condv[@]}; do

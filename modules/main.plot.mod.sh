@@ -41,6 +41,14 @@ function plot_umi() {
 	else
 		echo -e "Skipped plot step ..."
 	fi
+
+
+	# Clean ----------------------------------------------------------------
+	
+	if [ 2 -le $neatness ]; then
+		echo -e "\n~ Cleaning..."
+		rm -v $cout/*/UMIpos.*
+	fi
 }
 
 ################################################################################

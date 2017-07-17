@@ -56,6 +56,13 @@ source $moddir/main.library_run.mod.sh
 
 for exp in ${expv[@]}; do library_run $exp; done
 
+# Merge library summary
+exp0=`echo ${expv[0]} | cut -d ' ' -f 1`
+echo -e "expID\t`head -n 1 "$outdir/$exp0/summary"`" > $outdir/summary
+for exp in ${expv[@]}; do
+	echo -e "$exp\t$(cat $outdir/$exp/summary | sed 1d)" >> $outdir/summary
+done
+
 # END --------------------------------------------------------------------------
 
 echo -e "\n\n~~ fin ~~"
