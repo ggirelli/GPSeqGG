@@ -87,13 +87,13 @@ execute_step $dontask 'pattern_filtering' pattern_filtering
 source $moddir/main.alignment.mod.sh
 execute_step $dontask 'alignment' alignment
 
-exit 1
 # Filter SAM -------------------------------------------------------------------
 
 # Load sam filter module
 source $moddir/main.sam_filter.mod.sh
 execute_step $dontask 'SAM filtering' filter_sam
 
+exit 1
 # PREPARE UMI ------------------------------------------------------------------
 
 # Load UMI preparation module

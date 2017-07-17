@@ -26,12 +26,12 @@ function filter_sam() {
 	header="$header\tumis\tumis/prefix"
 	echo -e "$header" > $outcontrol/summary_sam_filter
 
-	for condition in "${condv[@]}"; do
+	for condition in ${condv[@]}; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
 
 		# Retrieve cutsite sequence
-		cutsite=`grep -e "^"$condition "$indir/pat_files" | \
-			cut -f 3 | head -n 1`
+		cutsite=`grep -P "$expID\t$condition" "$indir/patterns.tsv" | \
+			cut -f 5 | head -n 1`
 
 		# Count condition total reads
 		echo -e "Counting condition reads..."
@@ -50,7 +50,7 @@ function filter_sam() {
 			flags+=('Y')
 		fi
 		flags=`join_by , "${flags[@]}"`
-		if [ -n $flags ]; then
+		if [ -n "$flags" ]; then
 			flags="-r $flags"
 		fi
 

@@ -1,6 +1,7 @@
 v1.1.0
 ---
 
+* Fixed bug in SAM filter that crashed the script if no chromosome is removed.
 * Renamed pat_files to patterns.tsv.
 * Implemented multi-library analysis.
 * Divided log by library.
