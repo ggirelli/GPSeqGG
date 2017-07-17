@@ -41,8 +41,8 @@ function prepare_umi() {
 		fi
 
 		# Retrieve cutsite sequence
-		cutsite=`grep -e "^"$condition "$indir/pat_files" | \
-			cut -f 3 | head -n 1`
+		cutsite=`grep -P "$expID\t$condition" "$indir/patterns.tsv" | \
+			cut -f 5 | head -n 1`
 
 		# Group UMIs -----------------------------------------------------------
 		if [[ -n "$maskFile" ]]; then
@@ -92,7 +92,7 @@ function prepare_umi() {
 
 			# Generate bed
 			$scriptdir/bed_make.sh -o $cout/$condition/ -c $cutsite \
-				-f $csList  -t "$trackName"
+				-f $csList -t "$trackName"
 
 			# Save bed
 			cp $cout/$condition/UMIpos.unique.atcs.bed \
@@ -102,8 +102,7 @@ function prepare_umi() {
 			trackName="$trackName,atcs=F\""
 
 			# Generate bed
-			$scriptdir/bed_make.sh -o $cout/$condition/ \
-				-c $cutsite -t "$trackName"
+			$scriptdir/bed_make.sh -o $cout/$condition/ -t "$trackName"
 
 			# Save bed
 			cp $cout/$condition/UMIpos.unique.bed \
@@ -143,7 +142,7 @@ function prepare_umi() {
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> $outcontrol/summary_umi_prep
 	}
-	for condition in "${condv[@]}"; do
+	for condition in ${condv[@]}; do
 		time prepare_umi_single_condition
 	done
 

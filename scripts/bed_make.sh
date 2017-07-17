@@ -19,18 +19,18 @@ export LC_ALL=C
 
 # Help string
 helps="
- usage: ./bed_make.sh [-h] -o outDir -c csSeq [-f csList][-t headerLine]
+ usage: ./bed_make.sh [-h] -o outDir [-c csSeq][-f csList][-t headerLine]
 
  Description:
   Generates bed file from UMI txt file with chr-start-UMIs-counts columns.
 
  Mandatory arguments:
   -o outDir	Condition folder, containing UMI counts.
-  -c csSeq	Cutsite sequence.
 
  Optional arguments:
   -h		Show this help page.
-  -f csList	Cutsite list file.
+  -c csSeq	Cutsite sequence. Mandatory with -f.
+  -f csList	Cutsite list file. Mandatory with -c.
   -t headerLine	Text header line.
 "
 
@@ -77,10 +77,10 @@ fi
 # Count cutsite size
 csLen=${#csSeq}
 
-# Print bedfile header line
-echo -e "$headerLine" >  "$out_dir/UMIpos.unique.atcs.bed"
-
 if [ -n "$csList" ]; then
+	# Print bedfile header line
+	echo -e "$headerLine" >  "$out_dir/UMIpos.unique.atcs.bed"
+
 	# Obtain cutsites from list and compare with uniqued UMIs
 	awkprogram='
 	("chr23"==$1){ $1="chrX" }
@@ -110,6 +110,9 @@ if [ -n "$csList" ]; then
 		<(cat "$out_dir/UMIpos.unique.atcs.txt") \
 		>> "$out_dir/UMIpos.unique.atcs.bed"
 else
+	# Print bedfile header line
+	echo -e "$headerLine" >  "$out_dir/UMIpos.unique.bed"
+
 	# Without cutsite assignment
 	awkprogram='
 	{

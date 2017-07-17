@@ -93,13 +93,13 @@ execute_step $dontask 'alignment' alignment
 source $moddir/main.sam_filter.mod.sh
 execute_step $dontask 'SAM filtering' filter_sam
 
-exit 1
 # PREPARE UMI ------------------------------------------------------------------
 
 # Load UMI preparation module
 source $moddir/main.umi_prep.mod.sh
 execute_step $dontask 'UMI preparation' prepare_umi
 
+exit 1
 # BIN --------------------------------------------------------------------------
 
 # Load binning module
