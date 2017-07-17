@@ -123,6 +123,11 @@ f = open(fname, 'w+')
 f.write(s)
 f.close()
 
+# Log
+fname = dirpath + condition + '.umi_prep_notes.txt'
+flog = open(fname, 'w+')
+flog.write(str(nr) + ' input reads.\n')
+
 # Masking UMIs -----------------------------------------------------------------
 if 0 != len(maskfile):
 	print(' · Masking locations ...')
@@ -176,13 +181,8 @@ if 0 != len(maskfile):
 	print(' >>> Masked ' + str(mc) + ' locations.')
 	print(' >>> Masked ' + str(mr) + ' reads.')
 
-	# Log
-	fname = dirpath + condition + '.umi_prep_notes.txt'
-	f = open(fname, 'w+')
-	f.write(str(nr) + ' input reads.\n')
-	f.write(str(mc) + ' locations masked.\n')
-	f.write(str(mr) + ' reads masked.\n')
-	f.close()
+	flog.write(str(mc) + ' locations masked.\n')
+	flog.write(str(mr) + ' reads masked.\n')
 
 	# Output
 	print(' · Saving masked UMIs ...')
@@ -210,6 +210,8 @@ if 0 != len(maskfile):
 	f = open(fname, 'w+')
 	f.write(s)
 	f.close()
+
+flog.close()
 
 # END --------------------------------------------------------------------------
 

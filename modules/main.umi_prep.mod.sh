@@ -27,8 +27,8 @@ function prepare_umi() {
 	# Update summary header
 	header=`head -n 1 $outcontrol/summary_sam_filter`
 	header="$header\tunmasked\tunmasked/umis"
-	header="$header\tassigned_to_cs\tto_cs/unmasked"
-	header="$header\tpass_read_qc\tread_qc/to_cs"
+	header="$header\tnon_orphan\tnon_orph/unmasked"
+	header="$header\tpass_read_qc\tread_qc/non_orph"
 	header="$header\tunique_umis\tunique/read_qc"
 	echo -e "$header" > $outcontrol/summary_umi_prep
 
@@ -118,12 +118,12 @@ function prepare_umi() {
 		# Masked reads
 		c=`cat $cout/"$condition"/"$condition".umi_prep_notes.txt | \
 			grep 'reads masked' | head -n 1 | cut -d ' ' -f 1`
-		c=`expr $ir - $c`
+		if [ -z "$c" ]; then c=$ir; else c=`expr $ir - $c`; fi
 		p=`printf "%.2f%%" "$(bc <<< "scale = 4; $c / $ir * 100")"`
 
-		# Assigned to cutsite
+		# Assigned to cutsite (non-orphan)
 		c2=`cat $cout/"$condition"/"$condition".umi_prep_notes.txt | \
-			grep 'assigned to a cutsite' | head -n 1 | cut -d ' ' -f 1`
+			grep 'non-orphan' | head -n 1 | cut -d ' ' -f 1`
 		p2=`printf "%.2f%%" "$(bc <<< "scale = 4; $c2 / $c * 100")"`
 		
 		# Pass the read quality filter	

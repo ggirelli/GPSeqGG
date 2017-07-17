@@ -35,12 +35,12 @@ The columns added by this step replace those generated in the *read alignment* s
 
 ### UMI deduplication
 
-- **unmasked**: number of aligned reads that are not masked out
+- **unmasked**: number of aligned reads that are not masked out. It equals the number of reads after alignment filtering if the masking step was skipped (e.g., no mask provided).
 - **unmasked/umis**: fraction or percentage of aligned reads that are not masked out
-- **assigned_to_cs**: number of unmasked reads that are assigned to a known cutsite
-- **to_cs/unmasked**: fraction or percentage of unmasked reads that are assigned to a known cutsite
+- **non_orphan**: number of unmasked reads that are assigned to a known cutsite. It equals the unmasked number if the cutsite assignment step was skipped (e.g., no cutsite list provided).
+- **non_orph/unmasked**: fraction or percentage of unmasked reads that are assigned to a known cutsite
 - **pass_read_qc**: number of reads assigned to a known cutsite that pass the read quality filter
-- **read_qc/to_cs**: fraction or percentage of reads assigned to a known cutsite that pass the read quality filter
+- **read_qc/non_orph**: fraction or percentage of reads assigned to a known cutsite that pass the read quality filter
 - **unique_umis**: number of de-duplicated reads that pass all the filtering steps
 - **unique_read/read_qc**: fraction or percentage of deduplicated reads that pass all the previous filtering
 

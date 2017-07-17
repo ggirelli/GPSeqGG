@@ -290,7 +290,7 @@ cat(' · Counting UMIs ...\n')
 n = unlist(mclapply(strsplit(u$seq, ' ', fixed = T),
 	FUN = length, mc.cores = num_proc))
 
-log = paste0(sum(n), ' reads assigned to a cutsite.\n')
+log = paste0(sum(n), ' non-orphan reads.\n')
 
 # Build quality data.frame
 qabd = mk_qab_df(qab, qab_min)
