@@ -32,7 +32,6 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
  Mandatory arguments:
   -i indir	Input directory.
   -o outdir	Output directory. Created if not found.
-  -e expID	Experiment ID.
 
  Optional arguments:
   -h	Show this help page.
@@ -111,10 +110,6 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				msg="Output folder not found, creating it."
 				mkdir -p $outdir
 			fi
-		;;
-		e)
-			# Experiment ID
-			expID=$OPTARG
 		;;
 		n)
 			# Negative condition label
@@ -222,10 +217,6 @@ if [ -z "$indir" ]; then
 fi
 if [ -z "$outdir" ]; then
 	echo -e "$helps\n!!! ERROR! Missing mandatory -o option.\n"
-	exit 1
-fi
-if [ -z "$expID" ]; then
-	echo -e "$helps\n!!! ERROR! Missing mandatory -e option.\n"
 	exit 1
 fi
 
