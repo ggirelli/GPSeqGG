@@ -109,7 +109,6 @@ execute_step $dontask 'alignment' alignment
 source $moddir/main.sam_filter.mod.sh
 execute_step $dontask 'SAM filtering' filter_sam
 
-
 # PREPARE UMI ------------------------------------------------------------------
 
 # Load UMI preparation module

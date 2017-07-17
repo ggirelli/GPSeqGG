@@ -36,7 +36,6 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
  Optional arguments:
   -h	Show this help page.
   -w	Perform every step of the pipeline without asking.
-  -n	Negative present. Expected label: neg;
   -x	Remove X chromosome after alignment.
   -y	Remove Y chromosome after alignment.
   -t threads	Number of threads for parallelization.
@@ -110,10 +109,6 @@ while getopts hwt:i:o:e:ng:a:d:xyq:p:u:r:z:b:j:k:l:m:s: opt; do
 				msg="Output folder not found, creating it."
 				mkdir -p $outdir
 			fi
-		;;
-		n)
-			# Negative condition label
-			neg='neg'
 		;;
 		g)
 			# Reference genome
@@ -226,33 +221,37 @@ if [ "bwa" == "$aligner" -a -z "$bwaIndex" ]; then
 	exit 1
 fi
 
-# Check pat_files --------------------------------------------------------------
+# Check patterns.tsv --------------------------------------------------------------
 
-if [ -e "$indir/pat_files" ]; then
+if [ -e "$indir/patterns.tsv" ]; then
 
 	# Count columns
-	for i in $(seq 1 `wc -l $indir/pat_files | cut -d " " -f 1`); do
+	for i in $(seq 1 `cut -f 1 $indir/patterns.tsv | wc -l`); do
 		# Retrieve pattern row
-		row=`cat $indir/pat_files | head -n $i | tail -n 1`
+		row=`cat $indir/patterns.tsv | head -n $i | tail -n 1`
 
 		# Count fields
 		nc=`echo "$row" | awk '{ n=split($0, t, "\t"); print n; }' | uniq`
 
 		# Check field number
-		if [ 4 -ne $nc ]; then
-			msg="!!! Missing columns in pat_files, row $i.\n"
-			msg="$msg    Expected 4 columns, found $nc."
+		if [ 5 -ne $nc ]; then
+			msg="!!! Wrong column number in patterns.tsv, row $i.\n"
+			msg="$msg    Expected 5 columns, found $nc."
 			echo -e "$helps\n$msg"
 			exit 1
 		fi
 	done
 
-	conds=`cut -f 1 $indir/pat_files | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
+	conds=`cut -f 1 $indir/patterns.tsv | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
 	IFS=',' read -r -a condv <<< "$conds"
 else
-	msg="!!! ERROR! Missing pat_files.\n"
-	msg=$msg"    Standard pat_files row:\n"
-	msg=$msg"    conditionLabel	linkerPattern	cutsiteSeq	linkerSize\n"
+	fomt="experiment_id\tcondition_label\tlinker_pattern"
+	fomt=$fomt"\ttrim_length\tcutsite_seq"
+	echo -e $fomt > $indir/patterns.tsv
+
+	msg="!!! ERROR! Missing patterns.tsv.\n"
+	msg=$msg"    Created patterns.tsv with standard format:\n"
+	msg=$msg"    $fomt\n"
 	echo -e "$helps\n$msg"
 	exit 1
 fi
@@ -272,22 +271,15 @@ fi
 # Settings mandatory options
 settings="$settings
  Input directory:\t$indir
- Output directory:\t$outdir
- 
- Experiment ID: $expID
- Conditions: $conds"
-if [ -n "$neg" ]; then
-	settings="$settings\n Negative: $neg"
-else
-	settings="$settings\n!!! No negative condition."
-fi
+ Output directory:\t$outdir"
 
 settings=$settings"\n\n Pattern instructions:\n"
-patterns=" conditionLabel\tlinkerPattern\tcutsiteSeq\tlinkerSize\n"
-patterns=$patterns" "$(cat -t $indir/pat_files | sed "s/\^I/\\\t/g")
-patterns="$(echo -e ' '$patterns | sed ':a;N;$!ba;s/\n/\n /g')"
-patterns="$(column -c 4 -s '~' -t <(echo "$patterns" | sed 's/\t/~/g'))"
-settings=$settings"${patterns}"
+
+patterns=" experiment_id\tcondition_label\tlinker_pattern"
+patterns=$patterns"\ttrim_length\tcutsite_seq\n"
+patterns=$(echo -e $patterns$(cat -t $indir/patterns.tsv | tr '\n' '\t' | \
+	sed 's/\t/\\n/g' | sed 's/\^I/\\t/g') | column -c 5 -s $'\t' -t)
+settings=$settings"$patterns"
 
 # Other settings
 settings="$settings

@@ -56,7 +56,7 @@ The steps performed by `main` are the following:
 		* Count total reads and prepare `summary` file
 		* Run `./pattern_filtering.sh` per condition and update the `summary` file
 4. Perform read alignment.
-		* First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `pat_files`)
+		* First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `patterns.tsv`)
 		* Run `./reads_align.sh` and update summary with fraction of mapped reads
 		* Add the patterns to the SAM files (condition.linker.sam)
 5. Filters the SAM file. (this step requires a specified `mapqthr` setting)
@@ -79,22 +79,24 @@ Description of different output files.
 
 #### Input
 
-At least two files are required: a sequencing platform output file (R1), and a `pat_files` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
+At least two files are required: a sequencing platform output file (R1), and a `patterns.tsv` file in the input directory, which contains the pattern to recognize the different conditions. If the sequencing is paired ended, also an R2 file is required.
 
-The `patterns` file, which is expected to be located in the input folder, contains a row per condition per experiment. Every row contains the following tab-separated information:
+The `patterns.tsv` file, which is expected to be located in the input folder, contains a row per condition per experiment. Every row contains the following tab-separated information:
 
 ```
-experiment_ID	condition_label	scan_for_matches_pattern	cutsite_sequence	trimming_length
+experiment_ID	condition_label	scan_for_matches_pattern	trimming_length	[cutsite_sequence]
 ```
 
 An example being the following:
 
 ```
-TK20	neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	AAGCTT	22
-TK20	1min	^ 8...8 CATCATCC AAGCTT 1...1000 $	AAGCTT	22
-TK21	1min	^ 8...8 GTCGTTCC AAGCTT 1...1000 $	AAGCTT	22
-TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	AAGCTT	22
+TK20	neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	22	AAGCTT
+TK20	1min	^ 8...8 CATCATCC 1...1000 $	18	
+TK21	1min	^ 8...8 GTCGTTCC 1...1000 $	16	
+TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22	AAGCTT
 ```
+
+Please, note that the last column (cutsite_sequence) can be empty, but must be present (i.e., a final tabulation is required). Otherwise, a `Wrong column number in patterns.tsv, row X. Expected 5 columns, found 4.` error is triggered.
 
 ## Other scripts
 
