@@ -1,6 +1,8 @@
 Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis (v1.0.0)
 ===
 
+Check the [how-to page](how-to/) for instructions on how to run the pipeline.
+
 ## The `main` script
 
 ```

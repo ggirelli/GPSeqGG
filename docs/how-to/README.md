@@ -50,7 +50,7 @@ The pattern field (3rd) must be compatible with `scan_for_matches`, more informa
 Before running the pipeline, a few settings should be prepared.
 
 ```
-    -w  Perform every step of the pipeline without asking.
+  -w  Perform every step of the pipeline without asking.
   -x  Remove X chromosome after alignment.
   -y  Remove Y chromosome after alignment.
   -t threads  Number of threads for parallelization.
