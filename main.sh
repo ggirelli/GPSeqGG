@@ -35,7 +35,12 @@ check_settings
 
 # Save command line
 echo "$0 $*" > "$outdir/CMD"
-main_logpath="$outdir/main.log"
+mkdir -p $outdir/log
+
+# GLOBAL VARS ==================================================================
+
+timestamp=`date +"%Y-%m-%e.%H-%M-%S"`
+main_logpath=$outdir/log/$timestamp".main.log"
 
 # START LOG ====================================================================
 clear
@@ -49,12 +54,7 @@ source $moddir/main.library_run.mod.sh
 
 # RUN BY LIBRARY ---------------------------------------------------------------
 
-expIDs=$(cut -f 1 $indir/patterns.tsv | sort | uniq)
-for expID in ${expIDs[@]}; do
-	{
-		library_run $expID
-	} &> >(tee $outdir/$expID/$expID.log)
-done
+for exp in "${expv[@]}"; do library_run $exp; done
 
 # END --------------------------------------------------------------------------
 

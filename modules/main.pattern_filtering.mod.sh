@@ -24,18 +24,18 @@ function pattern_filtering() {
 	echo -e $header > $out/summary
 
 	# Work on single conditions
-	patfiles="$indir/pat_files"
-	for condition in "${condv[@]}"; do
+	patfiles="$indir/patterns.tsv"
+	for condition in ${condv[@]}; do
 		echo -e "\n> Working on condition '$condition'..."
 
 		# Select pattern
-		pattern=`grep -P "$condition\t" $patfiles | cut -f 2`
+		pattern=`grep -P "$expID\t$condition\t" $patfiles | cut -f 3`
 
 		# Save condition-specific patfile
-		patfile="$cout/$condition/pat_file"
+		patfile="$cout/$condition/patterns.tsv"
 		mkdir -p $cout/$condition
 		echo "$pattern" > $patfile
-		echo -e "\nPattern: $pattern"
+		echo -e "Pattern: $pattern\n"
 
 		# Identify condition-specific reads
 		time $scriptdir/pattern_filter.sh -t $threads -i $in \

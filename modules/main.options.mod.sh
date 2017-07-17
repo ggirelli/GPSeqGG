@@ -242,8 +242,7 @@ if [ -e "$indir/patterns.tsv" ]; then
 		fi
 	done
 
-	conds=`cut -f 1 $indir/patterns.tsv | tr '\n' ',' | sed -r 's/^(.*),$/\1/'`
-	IFS=',' read -r -a condv <<< "$conds"
+	expv=$(cut -f 1 $indir/patterns.tsv | sort | uniq)
 else
 	fomt="experiment_id\tcondition_label\tlinker_pattern"
 	fomt=$fomt"\ttrim_length\tcutsite_seq"

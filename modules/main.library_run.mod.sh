@@ -17,9 +17,6 @@ function library_run() {
 
 # Identify experiment ID and log it.
 expID=$1
-line=""
-for (( i = 1; i < $(echo "# $expID #" | wc -c); i++ )); do line=$line"#"; done
-echo -e $line"\n# $expID #\n"$line"\n"
 
 # PREPARE DIRECTORY STRUCTURE ==================================================
 
@@ -27,16 +24,28 @@ echo -e $line"\n# $expID #\n"$line"\n"
 in=$indir/indata_$expID && mkdir -p $in
 
 # Output folders
-out=$outdir/$expID/ && mkdir -p $out
+out=$outdir/$expID && mkdir -p $out
 cout=$out/conditions && mkdir -p $cout
 pout=$out/plots && mkdir -p $pout
 xout=$out/aux && mkdir -p $xout
+log=$out/log && mkdir -p $log
 
 # Additional outputs
 outcontrol=$out/tmp && mkdir -p $outcontrol
-logpath="$out/$expID/$expID.log"
+logpath="$log/$expID.log"
 
-# IDENTIFY DATA FILES ==========================================================
+# START PIPELINE ===============================================================
+{
+
+# START LOG --------------------------------------------------------------------
+line=""
+for (( i = 1; i < $(echo "# $expID #" | wc -c); i++ )); do line=$line"#"; done
+echo -e $line"\n# $expID #\n"$line"\n"
+
+# IDENTIFY CONDITIONS ----------------------------------------------------------
+condv=$(cat $indir/patterns.tsv | grep $expID | cut -f 2)
+
+# IDENTIFY DATA FILES ----------------------------------------------------------
 
 find $indir -maxdepth 1 -type f -iname "*$expID*R[12]*" | sort > filelist
 numb_of_files=`cat filelist | wc -l`
@@ -54,15 +63,12 @@ if [ $numb_of_files -eq 2 ]; then
 fi
 rm filelist
 
-# START PIPELINE ===============================================================
-
 # QUALITY CONTROL --------------------------------------------------------------
 
 # Load quality control module
 source $moddir/main.qc.mod.sh
 execute_step $dontask 'quality control' quality_control
 
-exit 1
 # FILE GENERATION --------------------------------------------------------------
 
 # Load file generation module
@@ -75,6 +81,7 @@ execute_step $dontask 'file generation' file_generation
 source $moddir/main.pattern_filtering.mod.sh
 execute_step $dontask 'pattern_filtering' pattern_filtering
 
+exit 1
 # ALIGNMENT --------------------------------------------------------------------
 
 # Load alignment module
@@ -105,6 +112,7 @@ execute_step $dontask 'binning' bin_step
 source $moddir/main.plot.mod.sh
 time execute_step $dontask 'UMI plot' plot_umi
 
+} &> >(tee $log/$timestamp.$expID.log)
 } # endfunction
 
 ################################################################################
