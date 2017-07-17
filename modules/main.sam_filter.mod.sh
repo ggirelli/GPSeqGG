@@ -31,8 +31,8 @@ function filter_sam() {
 
 		# Count condition total reads
 		echo -e "Counting condition reads..."
-		cond_count=`cat $cout/$condition/filtered.r1.fa | paste - - | \
-			wc -l | cut -d " " -f 1`
+		cond_count=`grep $condition $outcontrol/summary_align | cut -f 4 \
+			| head -n 1`
 
 		# From https://goo.gl/MNXp5o
 		function join_by { local IFS="$1"; shift; echo "$*"; }
@@ -98,6 +98,15 @@ function filter_sam() {
 		grep "$condition" "$outcontrol/summary_pattern" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> $outcontrol/summary_sam_filter
+
+
+		# Clean ----------------------------------------------------------------
+		
+		if [ 0 -lt $neatness ]; then
+			echo -e "\n~ Cleaning..."
+			rm -v $cout/$condition/$condition".sam"
+		fi
+
 	done
 
 	cp $outcontrol/summary_sam_filter $out/summary

@@ -129,6 +129,17 @@ function prepare_umi() {
 		grep "$condition" "$outcontrol/summary_sam_filter" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> $outcontrol/summary_umi_prep
+
+
+		# Clean ----------------------------------------------------------------
+		
+		if [ 2 -le $neatness ]; then
+			echo -e "\n~ Cleaning..."
+			rm -v $cout/$condition/$condition* \
+				$cout/$condition/*.log \
+				$cout/$condition/summary \
+				$cout/$condition/UMIpos.*
+		fi
 	}
 	for condition in ${condv[@]}; do
 		time prepare_umi_single_condition

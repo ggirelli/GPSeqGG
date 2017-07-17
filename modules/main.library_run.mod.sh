@@ -111,6 +111,13 @@ execute_step $dontask 'binning' bin_step
 source $moddir/main.plot.mod.sh
 time execute_step $dontask 'UMI plot' plot_umi
 
+# Clean ------------------------------------------------------------------------
+
+if [ 2 -le $neatness ]; then
+	echo -e "\n~ Cleaning..."
+	rm -r $outcontrol
+fi
+
 } &> >(tee $log/$timestamp.$expID.log)
 } # endfunction
 

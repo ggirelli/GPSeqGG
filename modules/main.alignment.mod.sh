@@ -91,6 +91,14 @@ function alignment() {
 			<(cat "$cout/$condition/$condition.sam" | \
 				grep -v "^\@" | tr -s ' ') \
 			> "$cout/$condition/$condition.linkers.sam"
+
+		# Clean ----------------------------------------------------------------
+		
+		if [ 0 -lt $neatness ]; then
+			echo -e "\n~ Cleaning..."
+			rm -v $cout/$condition/filtered*
+		fi
+
 	done
 
 	cp $outcontrol/summary_align $out/summary
