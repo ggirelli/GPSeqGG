@@ -1,5 +1,5 @@
 v1.1.0
----
+===
 
 Major changes:
 * Added neatness level for automatic clean-up of intermediate files.
@@ -16,7 +16,7 @@ Minor changes:
 v1.0.1
 ===
 
-Released on 20171717 before starting the implementation of v1.1.0.
+Released on 20170717 before starting the implementation of v1.1.0.
 
 * Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
 * Counting UMI duplicates during strict deduplication step.
