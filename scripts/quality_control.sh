@@ -95,12 +95,12 @@ fi
 if [ -z $r2 ]; then
 
 	# Single-end FASTQC
-	fastqc -t $threads -o $out_dir --nogroup $r1
+	fastqc -o $out_dir --nogroup $r1
 
 else
 
 	# Pair-end FASTQC
-	parallel fastqc -o $out_dir -t $threads --nogroup {} ::: $r1 $r2
+	parallel fastqc -o $out_dir -t 2 --nogroup {} ::: $r1 $r2
 
 fi
 
