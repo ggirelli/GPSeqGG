@@ -3,6 +3,8 @@ v1.1.1
 
 Minor changes:
 * Removed useless thread declaration when running FASTQC tool.
+* Updated neatness level labeling.
+* Fixed input option exceptions.
 
 v1.1.0
 ===
