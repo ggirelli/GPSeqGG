@@ -6,10 +6,10 @@ Check the [how-to page](how-to/) for instructions on how to run the pipeline.
 ## The `main` script
 
 ```
-usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
- [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
+usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir
+ [-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
- [-b binStep][-l csList][-m maskFile][-s chrLengths]
+ [-b binStep][-l csList][-m maskFile][-s chrLengths][-n neatness]
 
  Description:
   Run a step-by-step interactive GPSeq sequencing data analysis.
@@ -45,7 +45,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
   -l csList File with cutsite list. Columns: chr|pos. No header.
   -m maskFile File with masked regions. Columns: id|chr|start|end. No header.
   -s chrLengths File with chromosome lengths. chr|len. No header.
-  -n neatness Neatness level: 0 (heavy), 1 (light), 2 (lightest). Default: 1.
+  -n neatness Neatness level: 0 (dirty), 1 (neat), 2 (neatest). Default: 1.
 ```
 
 ### Pipeline steps
@@ -108,6 +108,8 @@ TK20	1min	^ 8...8 CATCATCC 1...1000 $	18
 TK21	1min	^ 8...8 GTCGTTCC 1...1000 $	16
 TK21	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22
 ```
+
+**The pattern file should NOT have a header line.**
 
 ### Sub-scripts
 

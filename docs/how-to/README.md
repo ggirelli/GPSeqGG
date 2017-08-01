@@ -45,6 +45,8 @@ TK21  2h  ^ 8...8 TGATGTCC AAGCTT 1...1000 $  22
 
 The pattern field (3rd) must be compatible with `scan_for_matches`, more information in the [official README](http://iubio.bio.indiana.edu/soft/molbio/pattern/scan_for_matches.readme).
 
+**The pattern file should NOT have a header line.**
+
 ## Select settings
 
 Before running the pipeline, a few settings should be prepared.
@@ -69,7 +71,7 @@ Before running the pipeline, a few settings should be prepared.
   -l csList File with cutsite list. Columns: chr|pos. No header.
   -m maskFile File with masked regions. Columns: id|chr|start|end. No header.
   -s chrLengths File with chromosome lengths. chr|len. No header.
-  -n neatness Neatness level: 0 (heavy), 1 (light), 2 (lightest). Default: 1.
+  -n neatness Neatness level: 0 (dirty), 1 (neat), 2 (neatest). Default: 1.
 ```
 
 You don't need to specify a setting if the default value is compatible with your analysis. Also, the selected settings will be showed and a confirmation is required before the pipeline starts. Thus, we suggest to add the settings one by one, and start the program to check what is missing and if everything is correct.

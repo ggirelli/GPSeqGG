@@ -54,7 +54,7 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir
   -l csList	File with cutsite list. Columns: chr|pos. No header.
   -m maskFile	File with masked regions. Columns: id|chr|start|end. No header.
   -s chrLengths	File with chromosome lengths. chr|len. No header.
-  -n neatness	Neatness level: 0 (heavy), 1 (light), 2 (lightest). Default: 1.
+  -n neatness	Neatness level: 0 (dirty), 1 (neat), 2 (neatest). Default: 1.
 "
 
 # Default values
