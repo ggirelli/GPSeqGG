@@ -85,25 +85,19 @@ neatness_labels+=('lightest')
 # Parse options
 while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 	case $opt in
+		# Help
 		h)
-			# Help
 			echo -e "$helps"
 			exit 0
 		;;
-		w)
-			# Automatic
-			dontask=true
-		;;
-		x)
-			# Remove chrX after alignment
-			rmX=true
-		;;
-		y)
-			# Remove chrY after alignment
-			rmY=true
-		;;
+		# Automatic
+		w) dontask=true;;
+		# Remove chrX after alignment
+		x) rmX=true;;
+		# Remove chrY after alignment
+		y) rmY=true;;
+		# Input directory
 		i)
-			# Input directory
 			if [ -d "$OPTARG" ]; then
 				indir=$OPTARG
 			else
@@ -112,28 +106,26 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exit 1
 			fi
 		;;
+		# Output directory
 		o)
-			# Output directory
 			outdir=$OPTARG
 			if [ ! -d "$OPTARG" ]; then
 				msg="Output folder not found, creating it."
 				mkdir -p $outdir
 			fi
 		;;
+		# Threads
 		t)
-			# Threads
 			if [ 0 -ge "$OPTARG" ]; then
 				echo -e "Enforcing a minimum of 1 thread.\n"
 			else
 				threads=$OPTARG
 			fi
 		;;
-		g)
-			# Reference genome
-			refGenome=$OPTARG
-		;;
+		# Reference genome
+		g) refGenome=$OPTARG;;
+		# Aligner
 		a)
-			# Aligner
 			if [ 'bwa' == "$OPTARG" -o 'bowtie2' == "$OPTARG" ]; then
 				aligner=$OPTARG
 			else
@@ -142,8 +134,8 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exit 1
 			fi
 		;;
+		# File with cutsite list
 		d)
-			# File with cutsite list
 			if [ -e $OPTARG ]; then
 				bwaIndex=$OPTARG
 			else
@@ -152,44 +144,26 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exi 1
 			fi
 		;;
-		q)
-			# Mapping quality threshold
-			mapqThr=$OPTARG
-		;;
-		p)
-			# Sequencing platform
-			platform=$OPTARG
-		;;
-		u)
-			# UMI length in nt
-			umiLength=$OPTARG
-		;;
-		r)
-			# Range around cutsite
-			csRange=$OPTARG
-		;;
-		j)
-			# Maximum error probability for read quality filtering
-			emax=$OPTARG
-		;;
-		k)
-			# Maximum % of bases with emax error probability
-			eperc=$OPTARG
-		;;
-		z)
-			# Bin size in nt
-			binSize=$OPTARG
-		;;
-		b)
-			# Bin step nin nt
-			binStep=$OPTARG
-		;;
-		c)
-			# Cutsite sequence
-			cutsite=$OPTARG
-		;;
+		# Mapping quality threshold
+		q) mapqThr=$OPTARG;;
+		# Sequencing platform
+		p) platform=$OPTARG;;
+		# UMI length in nt
+		u) umiLength=$OPTARG;;
+		# Range around cutsite
+		r) csRange=$OPTARG;;
+		# Maximum error probability for read quality filtering
+		j) emax=$OPTARG;;
+		# Maximum % of bases with emax error probability
+		k) eperc=$OPTARG;;
+		# Bin size in nt
+		z) binSize=$OPTARG;;
+		# Bin step nin nt
+		b) binStep=$OPTARG;;
+		# Cutsite sequence
+		c) cutsite=$OPTARG;;
+		# File with cutsite list
 		l)
-			# File with cutsite list
 			if [ -e $OPTARG ]; then
 				csList=$OPTARG
 			else
@@ -198,8 +172,8 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exit 1
 			fi
 		;;
+		# File with masked regions
 		m)
-			# File with masked regions
 			if [ -e $OPTARG ]; then
 				maskFile=$OPTARG
 			else
@@ -208,8 +182,8 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exit 1
 			fi
 		;;
+		# File with chromosome lengths
 		s)
-			# File with chromosome lengths
 			if [ -e $OPTARG ]; then
 				chrLengths=$OPTARG
 			else
@@ -218,6 +192,7 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				exit 1
 			fi
 		;;
+		# Neatness level
 		n)
 			if [ 0 -gt "$OPTARG" ]; then
 				neatness=0
@@ -229,13 +204,19 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 				fi
 			fi
 		;;
+		# Stop if unknown option is provided
 		?)
-			# Stop if unknown option is provided
-			echo -e "$helps\n!!! ERROR! Illegale option -- ${@:$OPTIND-1:1}"
+			echo -e "$helps\n!!! ERROR! Illegal option -- ${@:$OPTIND-1:1}"
 			exit 1 
 		;;
 	esac
 done
+
+# Stop if positional option was found
+if [[ -n "${@:$OPTIND:1}" ]]; then
+	echo -e "$helps\n!!! ERROR! Illegal option -- ${@:$OPTIND:1}"
+	exit 1
+fi
 
 # Check mandatory options
 if [ -z "$indir" ]; then
