@@ -15,10 +15,10 @@
 
 # Help string
 helps="
-usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir -e expID
- [-n][-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
+usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir
+ [-a aligner][-g refGenome][-d bwaIndex][-x][-y][-q mapqThr]
  [-p platform][-u umiLength][-r csRange][-j emax][-k eperc][-z binSize]
- [-b binStep][-l csList][-m maskFile][-s chrLengths]
+ [-b binStep][-l csList][-m maskFile][-s chrLengths][-n neatness]
 
  Description:
   Run a step-by-step interactive GPSeq sequencing data analysis.
@@ -228,6 +228,11 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 					neatness=$OPTARG
 				fi
 			fi
+		;;
+		?)
+			# Stop if unknown option is provided
+			echo -e "$helps\n!!! ERROR! Illegale option -- ${@:$OPTIND-1:1}"
+			exit 1 
 		;;
 	esac
 done
