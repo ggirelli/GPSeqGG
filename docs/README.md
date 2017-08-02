@@ -52,26 +52,14 @@ usage: ./main.sh [-h][-w][-t threads] -i inDir -o outDir
 
 The steps performed by `main` are the following:
 
-1. Run `./quality_control.sh`.
-2. Run `./files_prepare.sh`
-3. Perform pattern filtering:
-		* Count total reads and prepare `summary` file
-		* Run `./pattern_filtering.sh` per condition and update the `summary` file
-4. Perform read alignment.
-		* First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `patterns.tsv`)
-		* Run `./reads_align.sh` and update summary with fraction of mapped reads
-		* Add the patterns to the SAM files (condition.linker.sam)
-5. Filters the SAM file. (this step requires a specified `mapqthr` setting)
-		* Run `./sam_filter`.
-6. Prepare UMIs. If a `maskfile` was specified, UMIs are masked based on the information contained in such file.
-		* Run `./umi_group` to group UMIs that are mapped on the same position.
-		* Run `./pos2cutsite` to group UMIs on a cutsite if a list of known cutsites is provided.
-		* Run `./umi_dedupl` to deduplicate UMIs.
-7. Performs binning.
-		* Run `./cs_bin` to bin the cutsites.
-		* Run `./umi_bin` to bin the UMIs.
-8. Analyzes UMIs.
-		* Run `./umi_plot` to generate analysis results as figures.
+1. **Quality control.** Run `./quality_control.sh`.
+2. **Input format.** Run `./files_prepare.sh`
+3. **Pattern filter.** count total reads and prepare `summary` file, then run `./pattern_filtering.sh` per condition and update the `summary` file
+4. **Read alignment.** First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `patterns.tsv`). Then, Run `./reads_align.sh` and update summary with fraction of mapped reads. Finally, add the patterns to the SAM files (condition.linker.sam)
+5. **SAM filter.** (this step requires a specified `mapqthr` setting) Run `./sam_filter`.
+6. **Prepare UMIs.** If a `maskfile` was specified, UMIs are masked based on the information contained in such file. Run `./umi_group` to group UMIs that are mapped on the same position. Then, run `./pos2cutsite` to group UMIs on a cutsite if a list of known cutsites is provided. Finally, run `./umi_dedupl` to deduplicate UMIs.
+7. **Bin.** Run `./cs_bin` to bin the cutsites and `./umi_bin` to bin the UMIs.
+8. **Analyze UMIs.** Run `./umi_plot` to generate analysis results as figures.
 
 ### Output
 
