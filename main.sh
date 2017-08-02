@@ -39,8 +39,9 @@ mkdir -p $outdir/log
 
 # GLOBAL VARS ==================================================================
 
-timestamp=`date +"%Y-%m-%e.%H-%M-%S"`
+timestamp=`date +"%Y-%m-%e.%H-%M-%S" | tr -d ' '`
 main_logpath=$outdir/log/$timestamp".main.log"
+echo -e "$main_logpath"
 
 # START LOG ====================================================================
 clear
