@@ -83,28 +83,36 @@ if [ -n "$csList" ]; then
 
 	# Obtain cutsites from list and compare with uniqued UMIs
 	awkprogram='
-	("chr23"==$1){ $1="chrX" }
-	("chr24"==$1){ $1="chrY" }
-	(FNR==NR){
-		FS=OFS="\t";
+	BEGIN {
+		FS = OFS = "\t";
+	}
 
-		a[$1"~"$2]=$0"\t"NR;
+	# Read cutsite list and make array
+	( FNR == NR ){
+		if ( "chr23" == $1 ) { $1 = "chrX"; }
+		if ( "chr24" == $1 ) { $1 = "chrY"; }
+
+		a[$1"~"$2] = $0 OFS NR;
+
 		next
 	}
 
-	(23==$1){ $1="X" }
-	(24==$1){ $1="Y" }
+	# Build the key from the UMIpos file
 	{
-		FS=OFS="\t";
-		gsub(/ /, "", $1)
-		gsub(/ /, "", $2)
-		k="chr"$1"~"$2;
+		if ( 23 == $1 ) { $1 = "X"; }
+		if ( 24 == $1 ) { $1 = "Y"; }
+
+		gsub(/ /, "", $1);
+		gsub(/ /, "", $2);
+		k = "chr"$1"~"$2;
 	}
 
+	# Output in bedfile format
 	(k in a) {
-		split(a[k], cs, "\t")
-		n=split($3, umi, " ")
-		print "chr"$1 OFS $2 OFS $2+cslen OFS "cs_" cs[3] OFS n
+		split(a[k], cs, "\t");
+		n=split($3, umi, " ");
+		print $3 OFS n;
+		print "chr"$1 OFS $2 OFS $2+cslen OFS "cs_" cs[3] OFS n;
 	}'
 	awk -v cslen=$csLen "$awkprogram" <(cat "$csList") \
 		<(cat "$out_dir/UMIpos.unique.atcs.txt") \
@@ -115,18 +123,21 @@ else
 
 	# Without cutsite assignment
 	awkprogram='
+	BEGIN {
+		FS = OFS = "";
+	}
+	
 	{
 		split($0, r, "\t");
-		n=split(r[3], u, " ");
+		n = split(r[3], u, " ");
+		if ( 23 == r[1] ) { r[1] = "X"; }
+		if ( 24 == r[1] ) { r[1] = "Y"; }
 	}
 
-	(23==r[1]){ r[1]="X" }
-	(24==r[1]){ r[1]="Y" }
 
-	(0!=n){
-		FS=OFS="";
-		r[1]="chr"r[1];
-		print r[1],"\t",r[2],"\t",r[2]+cslen-1,"\tloc_",NR,"\t",n
+	( 0 != n ){
+		r[1] = "chr"r[1];
+		print r[1] OFS r[2] OFS r[2]+cslen-1 OFS "loc_" NR OFS n
 	}
 	'
 	awk -v cslen=$cslength "$awkprogram" \
