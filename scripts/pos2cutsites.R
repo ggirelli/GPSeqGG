@@ -79,7 +79,14 @@ cat(paste0(' · Range: +-', bin_size / 2, '\n'))
 
 # Associate positions to cutsites ----------------------------------------------
 cat(' · Associating locations to cutsites ...\n')
-file.remove(paste0(dirpath, 'orphans.txt'))
+
+# Reset orphan positions
+orph_fname = paste0(dirpath, 'orphans.txt')
+if file.exists(orph_fname) {
+	file.remove(orph_fname)
+}
+
+# Parallelize
 btt <- mclapply(split(umi, umi_num),
 	FUN = function(t, cs, bs) {
 		chr <- t$chr[1]
