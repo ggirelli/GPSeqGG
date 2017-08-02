@@ -258,7 +258,7 @@ if [ -e "$indir/patterns.tsv" ]; then
 	expv=$(cut -f 1 $indir/patterns.tsv | sort | uniq)
 else
 	fomt="experiment_id\tcondition_label\tlinker_pattern"
-	fomt=$fomt"\ttrim_length\tcutsite_seq"
+	fomt=$fomt"\ttrim_length"
 	echo -e $fomt > $indir/patterns.tsv
 
 	msg="!!! ERROR! Missing patterns.tsv.\n"
