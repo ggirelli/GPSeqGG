@@ -32,8 +32,10 @@ function pattern_filtering() {
 		pattern=`grep -P "$expID\t$condition\t" $patfiles | cut -f 3`
 
 		# Save condition-specific patfile
-		patfile="$cout/$condition/patterns.tsv"
+		patfile="$cout/$condition/pat_file"
 		mkdir -p $cout/$condition
+		grep -P "$expID\t$condition\t" $patfiles \
+			> "$cout/$condition/patterns.tsv"
 		echo "$pattern" > $patfile
 		echo -e "Pattern: $pattern\n"
 
