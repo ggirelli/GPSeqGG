@@ -77,9 +77,9 @@ cutsite="AAGCTT"
 neatness=1
 
 neatness_labels=()
-neatness_labels+=('heavy')
-neatness_labels+=('light')
-neatness_labels+=('lightest')
+neatness_labels+=('dirty')
+neatness_labels+=('neat')
+neatness_labels+=('neatest')
 
 
 # Parse options
