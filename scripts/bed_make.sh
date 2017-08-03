@@ -111,7 +111,6 @@ if [ -n "$csList" ]; then
 	(k in a) {
 		split(a[k], cs, "\t");
 		n=split($3, umi, " ");
-		print $3 OFS n;
 		print "chr"$1 OFS $2 OFS $2+cslen OFS "cs_" cs[3] OFS n;
 	}'
 	awk -v cslen=$csLen "$awkprogram" <(cat "$csList") \

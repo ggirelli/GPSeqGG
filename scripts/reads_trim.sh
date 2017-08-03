@@ -98,7 +98,7 @@ d="$out_dir/$condition/"
 # RUN ==========================================================================
 
 # Select non-genomic region length
-length=`grep -P "$expID\t$condition" $patFile | cut -f 4`
+length=`grep -P "^$expID\t$condition\t" $patFile | cut -f 4`
 echo -e " · Trimming the first $length bases (pattern file)."
 
 # TRIM -----------------------------------------------------------------
