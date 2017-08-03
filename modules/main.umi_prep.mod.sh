@@ -100,7 +100,7 @@ function prepare_umi() {
 		# Update summary -------------------------------------------------------
 
 		# Prefix reads
-		npr=`grep -P "^$condition" $out/summary | cut -f 4 | head -n 1`
+		npr=`grep -P "^$condition" $out/summary | cut -f 5 | head -n 1`
 
 		# Input reads
 		ir=`cat $cout/"$condition"/"$condition".umi_prep_notes.txt | \

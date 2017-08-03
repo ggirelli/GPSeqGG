@@ -271,9 +271,8 @@ fi
 # Check settings ---------------------------------------------------------------
 
 # Settings header
-settings="
-# SETTINGS
-"
+settings=""
+
 if $dontask; then
 	settings="$settings
  Perform EVERY step of the pipeline.
@@ -289,7 +288,8 @@ settings=$settings"\n\n Pattern instructions:\n"
 
 patterns=" experiment_id\tcondition_label\tlinker_pattern\ttrim_length\n"
 patterns=$(echo -e $patterns$(cat -t $indir/patterns.tsv | tr '\n' '\t' | \
-	sed 's/\t/\\n/g' | sed 's/\^I/\\t/g') | column -c 5 -s $'\t' -t)
+	sed 's/\t/\\n/g' | sed 's/\^I/\\t/g') | column -c 5 -s $'\t' -t | \
+	sed 's/^/  /')
 settings=$settings"$patterns"
 
 # Other settings
@@ -317,13 +317,14 @@ settings="$settings
  Bin step: $binStep nt
 
  Neatness level: $neatness (${neatness_labels[$neatness]})
+
 "
 # Chromosome removal
 if $rmX; then
-	settings="$settings!!! Removing chrX after alignment.\n"
+	settings="$settings !!! Remove chrX after alignment !!!\n"
 fi
 if $rmY; then
-	settings="$settings!!! Removing chrY after alignment.\n"
+	settings="$settings !!! Remove chrY after alignment !!!\n"
 fi
 
 # Additional files
@@ -339,6 +340,6 @@ fi
 
 # Print settings
 clear
-echo -e "$settings"
+#echo -e "$settings" | less
 
 ################################################################################

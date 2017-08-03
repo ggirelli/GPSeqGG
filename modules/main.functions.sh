@@ -16,11 +16,21 @@
 
 function check_settings() {
 	# Give the user the time to check the settings.
-	
-	msg="Please, double check the settings."
-	msg="$msg\nRun the analysis?\nYes (y), Abort (a)"
-	echo -e $msg
-	read -e ans
+	settings_confirm=`echo -e "$1" | sed 's/^/ /'`
+	settings_confirm="
+ ##############################################
+ #                                            #
+ #  PLEASE, DOUBLE CHECK THE SETTINGS BELOW   #
+ # (press 'q' to continue when you are ready) #
+ #                                            #
+ ##############################################
+
+$settings_confirm"
+
+	echo -e "$settings_confirm" | less
+
+	msg="$msg\nRun the analysis?\nYes (y), Abort (a), Show again (s)"
+	clear; echo -e $msg; read -e ans
 	
 	end=0
 	while [[ 0 -eq $end ]]; do
@@ -34,6 +44,9 @@ function check_settings() {
 		elif [[ 'y' == $ans ]]; then
 			echo -e "\n"
 			end=1
+		elif [[ 's' == $ans ]]; then
+			echo -e "$settings_confirm" | less
+			clear; echo -e $msg; read -e ans
 		else
 			echo -e $msg
 			read -e ans

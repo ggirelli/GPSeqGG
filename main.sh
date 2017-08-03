@@ -31,7 +31,7 @@ source $moddir/main.functions.sh
 source $moddir/main.options.mod.sh
 
 # Ask the user to double-check everything
-check_settings
+check_settings "$settings"
 
 # Save command line
 echo "$0 $*" > "$outdir/CMD"
@@ -48,7 +48,12 @@ clear
 {
 
 # Start
-echo -e "$settings
+echo -e "
+#----------#
+# SETTINGS #
+#----------#
+$settings
+
 START\n====================="
 
 source $moddir/main.library_run.mod.sh

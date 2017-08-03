@@ -31,7 +31,7 @@ function filter_sam() {
 
 		# Count condition total reads
 		echo -e "Counting condition reads..."
-		cond_count=`grep "^$condition" $outcontrol/summary_align | cut -f 4 \
+		cond_count=`grep "^$condition" $outcontrol/summary_align | cut -f 5 \
 			| head -n 1`
 
 		# From https://goo.gl/MNXp5o
