@@ -19,7 +19,7 @@ function pattern_filtering() {
 	# Count total reads
 	echo -e "Counting total reads..."
 	total_read_count=`wc -l $in/r1oneline.fa | cut -d " " -f 1`
-	header="condition\tpattern\ttotal_read_count\treads_with_prefix"
+	header="condition\tpattern\ttrim_len\ttotal_read_count\treads_with_prefix"
 	header="$header\tprefix/total"
 	echo -e $header > $out/summary
 
@@ -29,12 +29,14 @@ function pattern_filtering() {
 		echo -e "\n> Working on condition '$condition'..."
 
 		# Select pattern
-		pattern=`grep -P "$expID\t$condition\t" $patfiles | cut -f 3`
+		needle="^$expID\t$condition\t"
+		pattern=`grep -P $needle $patfiles | cut -f 3`
+		tlen=`grep -P "$needle" $patfiles | cut -f 4`
 
 		# Save condition-specific patfile
 		patfile="$cout/$condition/pat_file"
 		mkdir -p $cout/$condition
-		grep -P "$expID\t$condition\t" $patfiles \
+		grep -P "^$expID\t$condition\t" $patfiles \
 			> "$cout/$condition/patterns.tsv"
 		echo "$pattern" > $patfile
 		echo -e "Pattern: $pattern\n"
@@ -51,7 +53,7 @@ function pattern_filtering() {
 		perc=`echo $convstr | bc`
 
 		echo -e $header > $cout/"$condition"/summary
-		header="$condition\t$pattern\t$total_read_count\t$count\t$perc%"
+		header="$condition\t$pattern\t$tlen\t$total_read_count\t$count\t$perc%"
 		echo -e $header >> $cout/"$condition"/summary
 		echo -e $header >> $out/summary
 	done

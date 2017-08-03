@@ -44,7 +44,7 @@ function library_run() {
 	echo -e "\n"$line"\n# $expID #\n"$line"\n"
 
 	# IDENTIFY CONDITIONS ------------------------------------------------------
-	condv=$(cat $indir/patterns.tsv | grep $expID | cut -f 2)
+	condv=$(cat $indir/patterns.tsv | grep "^$expID" | cut -f 2)
 
 	# IDENTIFY DATA FILES ------------------------------------------------------
 

@@ -6,6 +6,7 @@
 
 - **condition**: condition name specified in the `pat_files`
 - **pattern**: pattern used to identify the condition reads
+- **trim_length**: number of bases removed from the 5' of each read before alignment.
 - **total_read_count**: total number of reads in the library
 - **reads_with_prefix**: number of reads matching the provided pattern (i.e., prefix)
 - **prefix/total**: fraction or percentage of reads matching the provided pattern
