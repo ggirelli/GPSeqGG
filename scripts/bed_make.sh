@@ -136,7 +136,7 @@ else
 
 	( 0 != n ){
 		r[1] = "chr"r[1];
-		print r[1] OFS r[2] OFS r[2]+cslen-1 OFS "loc_" NR OFS n
+		print r[1] OFS r[2] OFS r[2]+1 OFS "loc_" NR OFS n
 	}
 	'
 	awk -v cslen=$cslength "$awkprogram" \
