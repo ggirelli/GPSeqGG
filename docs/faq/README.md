@@ -12,8 +12,8 @@ F.A.Q.
 	 * [Missing mandatory -i option.](#missing-mandatory--i-option)
 	 * [Missing mandatory -o option.](#missing-mandatory--o-option)
 	 * [Missing mandatory -e option.](#missing-mandatory--e-option)
-	 * [Missing columns in pat_files, row X. Expected 4 columns, found Y.](#missing-columns-in-pat_files-row-x-expected-4-columns-found-y)
-	 * [Missing pat_files.](#missing-pat_files)
+	 * [Missing columns in pattern.tsv, row X. Expected 4 columns, found Y.](#missing-columns-in-pattern.tsv-row-x-expected-4-columns-found-y)
+	 * [Missing pattern.tsv.](#missing-pattern.tsv)
 	 * [No R1/R2 files found for $expID.](#no-r1r2-files-found-for-expid)
 
 ## What do the `summary` columns mean?
@@ -75,15 +75,15 @@ The -o option is mandatory, as the pipeline needs to know where to save the outp
 
 The -e option is necessary, as it is used to identify the fastq files and to generate proper labeling of plots and in the reports. The sequencing output file name (i.e., the name of the fastq file(s)) must follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID* provided with the -e option, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
 
-### Missing columns in pat_files, row X. Expected 4 columns, found Y.
+### Missing columns in pattern.tsv, row X. Expected 4 columns, found Y.
 
-The pattern file (pat_files) format expects one line per condition and 4 tab-separated columns.For example:
+The pattern file (`pattern.tsv`) format expects one line per condition and 4 tab-separated columns.For example:
 
 ```
- neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	AAGCTT	22
- 1min	^ 8...8 CATCATCC AAGCTT 1...1000 $	AAGCTT	22
- 10min	^ 8...8 GTCGTTCC AAGCTT 1...1000 $	AAGCTT	22
- 2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	AAGCTT	22
+ EXP1	neg	^ 8...8 CATCAGAA AAGCTT 1...1000 $	22
+ EXP1	1min	^ 8...8 CATCATCC AAGCTT 1...1000 $	22
+ EXP1	10min	^ 8...8 GTCGTTCC AAGCTT 1...1000 $	22
+ EXP1	2h	^ 8...8 TGATGTCC AAGCTT 1...1000 $	22
 ```
 
 If you get this error you can double-check that:
@@ -91,10 +91,14 @@ If you get this error you can double-check that:
 * columns should be tab-separated
 * no empty row should be present at the end of the file
 
-### Missing pat_files.
+### Missing pattern.tsv.
 
-No `pat_files` is present in the input folder. Also, a mock pattern file with the expected structure should be printed after the error message.
+No `pattern.tsv` is present in the input folder. Also, a mock pattern file with the expected structure should be printed after the error message.
 
 ### No R1/R2 files found for $expID.
 
-Either no fastq file is present in the specified input folder, or they do not follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID* provided with the -e option, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained.
+This issue might be due to:
+
+* missing fastq file(s) in the specified input folder;
+* the fastq file do not follow the [Illumina](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm) format `expID_S*_L***_R*_001.fastq.gz`, where `expID` is the *experiment ID* provided in the `pattern.tsv` file, `S*` is the sample number, `L***` is the lane number, and `R*` indicates which fragment is contained;
+* the `expID` specified in the `pattern.tsv` file does not match any fastq file.
