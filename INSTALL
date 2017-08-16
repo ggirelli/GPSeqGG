@@ -1,4 +1,4 @@
-# REQUIRED SOFTWARE
+# 1) REQUIRED SOFTWARE
 
 * bwa v0.7.12-r1039
 * bowtie2 v2.2.6
@@ -15,7 +15,7 @@ Then, add the path of the uncompressed (with uncompress) folder to your $PATH en
 If, after installation, fastqc complains of missing files, download them from:
 https://github.com/ggirelli/configs/tree/master/fastqc/Configuration
 
-# REQUIRED R LIBRARIES
+# 2) REQUIRED R LIBRARIES
 
 * argparser
 * data.table
@@ -27,14 +27,15 @@ https://github.com/ggirelli/configs/tree/master/fastqc/Configuration
 * reshape2
 
 Install them from within R with the `install.packages()` command.
+Or run the INSTALL.R script.
 
-# REQUIRED PYTHON LIBRARIES
+# 3) REQUIRED PYTHON LIBRARIES
 
 * argparse
 * sys
 
 Install them with `pip install`.
 
-# FOLDERS
+# 4) FOLDERS
 
 Need a ~/tmp folder for sorting.
