@@ -20,3 +20,9 @@ Also, please visit the [how to page](docs/how-to/) and the [F.A.Q. page](docs/fa
 
 * Enrichment test in provided data-track.
 * Assign global radial position.
+* Library complexity
+
+### SETUP
+
+More details in the [INSTALL](./INSTALL.md) page.
+
