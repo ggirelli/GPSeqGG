@@ -52,10 +52,34 @@ Or run the `./INSTALL.R` script.
 
 Should be pre-installed with Python. Install them with `pip install` otherwise.
 
-# (5) FOLDERS
+# (5) Folders
 
 Need a ~/tmp folder for sorting.
 
 ```
 mkdir ~/tmp
+```
+
+# (6) Submodules
+
+Some submodules require additional steps to be used.
+
+## preseq
+
+`preseq` requires you to install the `GSL` package (available [here](https://www.gnu.org/software/gsl/)). Then, to install the package, move to the `preseq` folder and run make all:
+
+```
+cd lib/preseq
+git submodule init
+git submodule update
+make all
+./preseq
+```
+
+If everything is ready, then you should see the help page of the `preseq` package.
+
+If you installed the GSL library properly (`make install` and `make installcheck` worked properly) but you get an error when compiling `preseq`, then you need to add the GSL library to your PATH like this:
+
+```
+echo -e '\nexport LD_LIBRARY_PATH="/usr/local/lib/"' >> ~/.bash_profile
 ```

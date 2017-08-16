@@ -22,7 +22,7 @@ Also, please visit the [how to page](docs/how-to/) and the [F.A.Q. page](docs/fa
 * Assign global radial position.
 * Library complexity
 
-### SETUP
+### Pipeline setup
 
-More details in the [INSTALL](./INSTALL.md) page.
+More details in the [installation](./INSTALL.md) page.
 
