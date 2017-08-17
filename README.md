@@ -1,7 +1,7 @@
-gpseq-seq-gg v1.1.1dev
+gpseq-seq-gg \[Unreleased]
 ===
 
-**This page always refers to the new version (dev) of gpseq-seq-gg. For stable releases check the [releases page](https://github.com/ggirelli/gpseq-seq-gg/releases/).**
+**This is the developmental branch of gpseq-seq-gg. For stable releases check the [releases page](https://github.com/ggirelli/gpseq-seq-gg/releases/).**
 
 A pipeline for Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis. More details in the [docs](docs/).
 

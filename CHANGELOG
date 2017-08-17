@@ -1,66 +1,96 @@
-v1.1.1
----
+# Changelog
+All notable changes to this project will be documented in this file.
 
-Minor changes:
-* Removed useless thread declaration when running FASTQC tool.
-* Updated neatness level labeling.
-* Fixed input option exceptions.
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-v1.1.0
-===
 
-Major changes:
-* Added neatness level for automatic clean-up of intermediate files.
-* Moved cutsite sequence from pattern to single option.
-* Implemented multi-library analysis.
-* Renamed pat_files to patterns.tsv.
 
-Minor changes:
-* Fixed bug in SAM filter that crashed the script if no chromosome is removed.
-* Divided log by library.
-* Removed sub-step queries for filepaths.
-* Orphan reads saved in orphan.txt.
+## Unreleased
+### Changed
+* Clarified neatness level labeling.
 
-v1.0.1
-===
+### Removed
+* Useless thread declaration when running FASTQC tool.
 
-Released on 20170717 before starting the implementation of v1.1.0.
+### Fixed
+* Input option exceptions.
 
-* Updated global centrality script with debug mode, optional intermediate ranking and fixed global centrality option.
+
+
+## [1.1.0] - 2017-07-26
+### Added
+* Neatness level for automatic clean-up of intermediate files.
+* Multi-library analysis.
+* Saving orphan reads in orphan.txt.
+
+### Changed
+* Cutsite sequence option, moved to single option from pattern file.
+* pat_files to patterns.tsv (renamed).
+* Log, now divided by library.
+
+### Fixed
+* Bug in SAM filter that crashed the script if no chromosome is removed.
+
+### Removed
+* Sub-step queries for filepaths.
+
+
+
+## [1.0.1] - 2017-07-17
+### Added
+* Debug mode to global centrality script.
+* Optional intermediate ranking to global centrality script.
 * Counting UMI duplicates during strict deduplication step.
-* Optimized read quality filter memory usage.
-* Fixed bed file creation: multiple pipeline run would append new bed files to old ones.
-* Change summary update method to avoid creationg of broken lines.
 
-v1.0.0
-===
+### Changed
+* Read quality filter, optimized memory usage.
+* Summary update method to avoid creationg of broken lines.
 
-Released on 20170329 after extensive usage from external user.
+### Fixed
+* Global centrality option.
+* Bed file creation: multiple pipeline run would append new bed files to old ones.
 
-* Now using getopt in main.sh.
-* Moved code to `bin` subfolder.
-* Moved output conditions into `conditions` subfolder.
-* Moved output plots into `plots` subfolder.
-* Added auxillary intermediate data `aux` subfolder.
-* Added counts of reads filtered from SAM in the summary.
-* Optimized and fixed reads_trim.sh script.
-* Modularized main.sh script.
-* Moved scripts to separate folder.
-* Fixed rmX/rmY option report.
+
+
+## [1.0.0] - 2017-03-29.
+### Added
+* Input parameter support with getopt in main.
+* Auxillary intermediate data `aux` subfolder.
+* Counts of reads filtered from SAM in the summary.
 * Command line saved in aux/CMD file.
-* Filter X/Y chromosomes during SAM filter step.
-* Keep MAPQ level in SAM filter output.
-* Log the SAM filter step.
-* Optimized pos2cutsite script by calculating distance only from the 2 closest cutsite.
-* Log the UMI preparation step.
-* Produce properly formatted bed files per condition.
-* Moved bed creation to separate script.
-* Added header line to bed file.
-* Moved barcode sequence option to pat_files.
-* Added global centrality script.
-* Added cumulative of ratio and ratio of cumulative approaches to global centrality script.
+* X/Y chromosomes filter during SAM filter step.
+* MAPQ level in SAM filter output.
+* SAM filter step log.
+* UMI preparation step log.
+* Header line to bed file.
+* Global centrality script.
+* Cumulative of ratio and ratio of cumulative approaches to global centrality script.
+* Properly formatted bed files per condition.
 
-v0.1.0
-===
+### Changed
+* File location, moved code to `bin` subfolder.
+* Output structure, moved conditions into `conditions` subfolder.
+* Output structure, moved output plots into `plots` subfolder.
+* Read trimming script, optimized.
+* Main script, now using modules.
+* File structure, moved scripts to separate folder.
+* Pos2cutsite script, optimized by calculating distance only from the 2 closest cutsite.
+* Bed creation, moved to separate script.
+* Barcode sequence option, moved to pat_files.
 
-Released on 20170313.
+### Fixed
+* Read trimming.
+* rmX/rmY option report.
+
+
+
+## [0.1.0] - 2017-03-13.
+
+
+
+[Unreleased] https://github.com/ggirelli/gpseq-seq-gg
+[1.1.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.1.0
+[1.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.0.1
+[1.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.0.0
+[0.1.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v0.1.0
