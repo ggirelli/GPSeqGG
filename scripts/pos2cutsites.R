@@ -83,7 +83,7 @@ cat(' · Associating locations to cutsites ...\n')
 # Reset orphan positions
 orph_fname = paste0(dirpath, 'orphans.txt')
 if ( file.exists(orph_fname) ) {
-	file.remove(orph_fname)
+	tmp = file.remove(orph_fname)
 }
 
 # Parallelize

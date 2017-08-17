@@ -100,6 +100,12 @@ function library_run() {
 	source $moddir/main.umi_prep.mod.sh
 	execute_step $dontask 'UMI preparation' prepare_umi
 
+	# LIBRARY COMPLEXITY -------------------------------------------------------
+	
+	# Load library complexity module
+	source $moddir/main.library_complexity.mod.sh
+	execute_step $dontask 'Library complexity estimation' library_complexity
+
 	# BIN ----------------------------------------------------------------------
 
 	# Load binning module

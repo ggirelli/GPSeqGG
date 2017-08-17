@@ -329,14 +329,16 @@ fi
 
 # Additional files
 if [ -n "$csList" ]; then
-	settings="$settings\n Cutsites:\n $csList\n"
+	settings="$settings\n           Cutsites: $csList"
 fi
 if [ -n "$maskFile" ]; then
-	settings="$settings\n Masked regions:\n $maskFile\n"
+	settings="$settings\n     Masked regions: $maskFile"
 fi
 if [ -n "$chrLengths" ]; then
-	settings="$settings\n Chromosome lengths:\n $chrLengths\n"
+	settings="$settings\n Chromosome lengths: $chrLengths"
 fi
+
+settings="$settings\n"
 
 # Print settings
 clear
