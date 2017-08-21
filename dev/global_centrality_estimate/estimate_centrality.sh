@@ -23,13 +23,14 @@ export LC_ALL=C
 # Help string
 helps="
 usage: ./estimate_centrality.sh [-h][-s binSize][-p binStep]
-                                -o outdir [BEDFILE]...
+                                -o outdir -c csBed [BEDFILE]...
 
  Description:
   Calculate global centrality metrics. Requires bedtools for bin assignment.
 
  Mandatory arguments:
   -o outdir     Output folder.
+  -c csBed      Cutsite bedfile.
   BEDFILE       At least two (2) GPSeq condition bedfiles, space-separated and
                 in increasing order of restriction conditions intensity.
                 Expected to be ordered per condition.
@@ -46,7 +47,7 @@ binStep=0
 chrWide=true
 
 # Parse options
-while getopts hs:p:o: opt; do
+while getopts hs:p:o:c: opt; do
 	case $opt in
 		h)
 			# Help page
@@ -56,7 +57,7 @@ while getopts hs:p:o: opt; do
 		s)
 			# Bin size
 			if [ $OPTARG -le 0 ]; then
-				msg="!!! Invalid -s option. Bin size must be > 0."
+				msg="!!! ERROR! Invalid -s option. Bin size must be > 0."
 				echo -e "$help\n$msg"
 				exit 1
 			else
@@ -67,7 +68,7 @@ while getopts hs:p:o: opt; do
 		p)
 			# Bin step
 			if [ $OPTARG -le 0 ]; then
-				msg="!!! Invalid -p option. Bin step must be > 0."
+				msg="!!! ERROR! Invalid -p option. Bin step must be > 0."
 				echo -e "$help\n$msg"
 				exit 1
 			else
@@ -81,8 +82,18 @@ while getopts hs:p:o: opt; do
 			fi
 			outdir=$OPTARG
 		;;
+		c)
+			# Cutsite bedfile
+			if [ ! -e $OPTARG]; then
+				msg="!!! ERROR! Invalid -c option. File not found: $OPTARG"
+				echo -e "$help\n$msg"
+				exit 1
+			else
+				csBed=$OPTARG
+			fi
+		;;
 		?)
-			msg="!!! Unrecognized option."
+			msg="!!! ERROR! Unrecognized option."
 			echo -e "$help\n$msg"
 			exit 1
 		;;
@@ -92,6 +103,10 @@ done
 # Check mandatory options
 if [ -z "$outdir" ]; then
 	echo -e "$helps\n!!! ERROR! Missing mandatory -o option.\n"
+	exit 1
+fi
+if [ -z "$csBed" ]; then
+	echo -e "$helps\n!!! ERROR! Missing mandatory -c option.\n"
 	exit 1
 fi
 if [ ! -x "$(command -v bedtools)" -o -z "$(command -v bedtools)" ]; then
@@ -193,6 +208,7 @@ fi
 # 2) Intersect with bedtools ---------------------------------------------------
 echo -e " Intersecting ..."
 
+# Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
 	echo -e " > Intersecting ${bedfiles[$bfi]} ..."
@@ -200,6 +216,10 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 		 -b "${bedfiles[$bfi]}" -wa -wb \
 		> "$outdir/intersected.$prefix.$fname.tsv"
 done
+
+# Assign cutsites to bins
+bedtools intersect -a "$outdir/$prefix.bed" -b "$csBed" -wa -wb \
+	> "$outdir/intersected.$prefix.cutsites.tsv"
 
 # 3) Calculate centrality ------------------------------------------------------
 
