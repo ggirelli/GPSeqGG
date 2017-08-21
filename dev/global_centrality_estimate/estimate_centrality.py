@@ -41,7 +41,7 @@ parser.add_argument('--bin-size', type = int, nargs = 1,
 	metavar = 'binSize', help = """Default to chromosome-wide bins.""",
 	default = [-1])
 parser.add_argument('--bin-step', type = int, nargs = 1,
-	metavar = 'binSize', help = """Default to binStep.""",
+	metavar = 'binStep', help = """Default to binSize.""",
 	default = [-1])
 
 # Parse arguments
