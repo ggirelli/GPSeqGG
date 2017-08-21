@@ -19,6 +19,7 @@
 import argparse
 import numpy as np
 import pandas as pd
+import progressbar
 from StringIO import StringIO
 import sys
 
@@ -123,37 +124,39 @@ def get_chr_size(bed, chr_list):
 
 	# Per chromosome
 	for chrlab in chr_list:
-		d[chrlab] = bed['start'][np.where(chrlab == bed['chr'])[0]].max()
+		d[chrlab] = bed['start'][chrlab == bed['chr']].max()
 
 	return(d)
 
 def assign_to_bin(bin_starts, bin_size, bed):
-	'''Assign bed scorse to bins.
+	'''Assign bed rows to bins based if included.
 
 	Args:
-		bin_starts (list): list of bin start positions.
-		bed (pd.DataFrame): bed content.
+		bin_starts (np.ndarray): list of bin start positions.
+		bin_size (int): bin size in bp.
+		bed (pd.DataFrame): bed file content.
 
 	Returns:
-		list: score values grouped per bin.
+		list: one np.ndarray(score values) per bin.
 	'''
 
-	scores = []
+	# Identify last position
+	bin_ends = bin_starts + bin_size
 
-	bed_start = 0
+	# Make matrices for comparison
+	start_matrix = np.transpose(np.tile(bin_starts, (bed.shape[0], 1)))
+	end_matrix = np.transpose(np.tile(bin_ends, (bed.shape[0], 1)))
 
-	for start in bin_starts:
-		print(start)
-		# Identify starting bed line
-		bed_start = np.where(start <= bed['start'][bed_start:])[0][0]
+	# Identify contained reads
+	start_matrix = np.array(bed['start']) >= start_matrix
+	end_matrix = np.array(bed['end']) >= end_matrix
+	in_matrix = np.logical_and(start_matrix, end_matrix)
 
-		# Compare
-		selected = np.where(start + bin_size > bed['end'][bed_start:])[0]
-		scores.append(bed['score'][bed_start:][selected])
+	# Build output
+	scores = [bed['score'][in_matrix[i,:]] for i in range(bin_starts.shape[0])]
 
+	# Output
 	return(scores)
-
-
 
 # RUN ==========================================================================
 
@@ -185,24 +188,29 @@ for chrlab in chr_sizes.keys():
 		bins[chrlab] = 0
 	else:
 		bins[chrlab] = np.array(range(
-			0, chr_sizes[chrlab] - binSize + 1, binStep))
+			0, chr_sizes[chrlab] + 1, binStep))
 #print(bins)
 
 # Assign to bins ---------------------------------------------------------------
-print (" · Assigning reads to bins ...")
+print(" · Assigning reads to bins ...")
 binned = []
 for bfi in range(len(bedFiles)):
+	print("  > Working on '%s' ..." % (bedFiles[bfi]))
 	bed = beds.iloc[np.where(bfi == beds['bfi'])[0], :]
 	binned.append({})
 	if chrWide:
 		for chrlab in bins.keys():
-			binned[bfi][chrlab] = bed['score'][np.where(chrlab == bed['chr'])[0]]
+			print("  >> Working on %s ..." % (chrlab,))
+			binned[bfi][chrlab] = bed['score'][chrlab == bed['chr']]
 	else:
 		for chrlab in bins.keys():
-			print assign_to_bin(bins[chrlab], binSize, bed)
-print(binned)
+			print("  >> Working on %s ..." % (chrlab,))
+			binned[bfi][chrlab] = assign_to_bin(bins[chrlab], binSize, bed)
+#print(binned)
 
-# 2) Calculate centrality estimates --------------------------------------------
+# Calculate centrality estimates -----------------------------------------------
+
+
 
 # 3) Output --------------------------------------------------------------------
 
