@@ -26,8 +26,8 @@ usage: ./estimate_centrality.sh [-h][-s binSize][-p binStep]
                                 -o outdir -c csBed [BEDFILE]...
 
  Description:
-  Calculate global centrality metrics. Requires bedtools for bin assignment and
-  datamash for calculations.
+  Calculate global centrality metrics. Requires bedtools for bin assignment,
+  datamash for calculations, and awk for text manipulation.
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -115,7 +115,11 @@ if [ ! -x "$(command -v bedtools)" -o -z "$(command -v bedtools)" ]; then
 	exit 1
 fi
 if [ ! -x "$(command -v datamash)" -o -z "$(command -v datamash)" ]; then
-	echo -e "$helps\n!!! ERROR! Missing bedtools.\n"
+	echo -e "$helps\n!!! ERROR! Missing datamash.\n"
+	exit 1
+fi
+if [ ! -x "$(command -v awk)" -o -z "$(command -v awk)" ]; then
+	echo -e "$helps\n!!! ERROR! Missing awk.\n"
 	exit 1
 fi
 
@@ -165,6 +169,63 @@ settings="$settings
 
 echo -e "$settings\n"
 
+# FUNCTIONS ====================================================================
+
+add_chr_id='
+BEGIN {
+	OFS = FS = "\t";
+	convert["X"] = 23;
+	convert["Y"] = 24;
+}
+
+{
+	chrid = substr($1, 4);
+	if ( chrid in convert ) {
+		chrid = convert[chrid];
+	}
+	print chrid OFS $0;
+}'
+
+add_cs_sum='
+BEGIN {
+	OFS = FS = "\t";
+	sep = "~";
+}
+
+( FNR == NR ) {
+	k = $1 sep $2 sep $3;
+	a[k] = $0;
+	next;
+}
+
+{
+	k = $1 sep $2 sep $3;
+	if ( k in a ) {
+		print $0 OFS a[k];
+	}
+}'
+
+mk_bins='
+BEGIN {
+	OFS = FS = "\t";
+}
+
+{
+	for ( i = 0; i < $2; i += step ) {
+		print $1 OFS i OFS i+size
+	}
+}'
+
+normalize_read_count='
+BEGIN {
+	OFS = FS = "\t";
+}
+
+{
+	$4 = $4 OFS $4 / (cnr * $7);
+	print $0 OFS bfi;
+}'
+
 # RUN ==========================================================================
 
 # 0) Identify chromosome sizes -------------------------------------------------
@@ -172,7 +233,7 @@ echo -e " Retrieving chromosome sizes ..."
 chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 
 # Sort chromosomes
-echo -e "$chrSize" | awk -f "add_chr_id.awk" | sort -k1,1n | cut -f2,3 \
+echo -e "$chrSize" | awk "$add_chr_id" | sort -k1,1n | cut -f2,3 \
 	> "$outdir/chr_size.tsv"
 
 
@@ -189,12 +250,13 @@ fi
 # Generate bins
 if $chrWide; then
 	cat "$outdir/chr_size.tsv" | awk '{ print $1 "\t" 0 "\t" $2 }' \
-		> "$outdir/$prefix.bed"
+		> "$outdir/$prefix.bed" & pid=$!
 else
 	cat "$outdir/chr_size.tsv" | \
-		awk -v size=$binSize -v step=$binStep -f "mk_bins.awk" \
-		> "$outdir/$prefix.bed"
+		awk -v size=$binSize -v step=$binStep "$mk_bins" \
+		> "$outdir/$prefix.bed" & pid=$!
 fi
+wait $pid; rm "$outdir/chr_size.tsv"
 
 # 2) Intersect with bedtools ---------------------------------------------------
 echo -e " Intersecting ..."
@@ -211,16 +273,17 @@ done
 # Assign cutsites to bins
 echo -e " > Intersecting $csBed ..."
 bedtools intersect -a "$outdir/$prefix.bed" -b "$csBed" -c \
-	> "$outdir/intersected.$prefix.cutsites.tsv"
-
+	> "$outdir/intersected.$prefix.cutsites.tsv" & pid=$!
+wait $pid; rm "$outdir/$prefix.bed"
 # 3) Calculate bin statistics --------------------------------------------------
 echo -e " Calculating bin statistics ..."
 
 # Stats of cutsites
-echo -e " > Calculating for $fname ..."
+echo -e " > Calculating for $csBed ..."
 cat "$outdir/intersected.$prefix.cutsites.tsv" | \
-	datamash -sg1,2,3 sum 4 | awk -f "add_chr_id.awk" | sort -k1,1n -k3,3n | \
-	cut -f2- > "$outdir/bin_stats.$prefix.cutsites.tsv"
+	datamash -sg1,2,3 sum 4 | awk "$add_chr_id" | sort -k1,1n -k3,3n | \
+	cut -f2- > "$outdir/bin_stats.$prefix.cutsites.tsv" & pid=$!
+wait $pid; rm "$outdir/intersected.$prefix.cutsites.tsv"
 
 # Stats of beds
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
@@ -230,26 +293,36 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 	# Calculate statistics
 	echo -e " > Calculating for $fname ..."
 	bin_stats=$(cat "$binned" | datamash -sg1,2,3 sum 4 mean 4 svar 4 | \
-		awk -f "add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2-)
+		awk "$add_chr_id" | sort -k1,1n -k3,3n | cut -f2-)
 
 	# Add number of cutsites
-	awk -f "add_cs_sum.awk" <(cat "$outdir/bin_stats.$prefix.cutsites.tsv") \
+	awk "$add_cs_sum" <(cat "$outdir/bin_stats.$prefix.cutsites.tsv") \
 		<(echo -e "$bin_stats") | cut -f 1-6,10 \
-		> "$outdir/bin_stats.$prefix.$fname.tsv"
-	rm "$binned"
+		> "$outdir/bin_stats.$prefix.$fname.tsv" & pid=$!
+	wait $pid; rm "$binned"
 done
+rm "$outdir/bin_stats.$prefix.cutsites.tsv"
 
-# 4) Estimate centrality -------------------------------------------------------
+# 4) Normalize per cutsite and condition ---------------------------------------
 echo -e " Estimating centrality ..."
 
+# Normalize read count by cutsite and condition
+norm=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
 	stats="$outdir/bin_stats.$prefix.$fname.tsv"
 
-	cond_n_reads=$(cat "${bedfiles[$bfi]}" | datamash sum 5)
+	# Normalize
+	echo -e " > Normalizing for $fname ..."
+	cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 5)
+	norm="$norm"$(cat "$stats" | awk -v cnr=$cond_n_reads -v bfi=$bfi \
+		"$normalize_read_count")"\n"
+	rm "$stats"
 done
-
-
+# Columns:
+# chr | start | end | readSum | readNorm | readMu | readSigma | nCS | condID
+echo -e "$norm" | awk "$add_chr_id" | sort -k1,1n -k3,3n -k10,10n | \
+	cut -f2- > "$outdir/normalized.$prefix.tsv"
 
 # END ==========================================================================
 
