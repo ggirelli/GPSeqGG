@@ -26,7 +26,8 @@ usage: ./estimate_centrality.sh [-h][-s binSize][-p binStep]
                                 -o outdir -c csBed [BEDFILE]...
 
  Description:
-  Calculate global centrality metrics. Requires bedtools for bin assignment.
+  Calculate global centrality metrics. Requires bedtools for bin assignment and
+  datamash for calculations.
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -113,6 +114,10 @@ if [ ! -x "$(command -v bedtools)" -o -z "$(command -v bedtools)" ]; then
 	echo -e "$helps\n!!! ERROR! Missing bedtools.\n"
 	exit 1
 fi
+if [ ! -x "$(command -v datamash)" -o -z "$(command -v datamash)" ]; then
+	echo -e "$helps\n!!! ERROR! Missing bedtools.\n"
+	exit 1
+fi
 
 # Read bedfile paths
 shift $(($OPTIND - 1))
@@ -174,10 +179,17 @@ echo -e "$chrSize" | awk -f "add_chr_id.awk" | sort -k1,1n | cut -f2,3 \
 # 1) Generate bin bed file -----------------------------------------------------
 echo -e " Generating bins ..."
 
-prefix="bins.size$binSize.step$binStep"
+# Set output prefix
 if $chrWide; then
-	cat "$outdir/chr_size.tsv" | awk "{ print $1 '\t' 0 '\t' $2 }" \
-		> "$outdir/bins.size$binSize.step$binStep.bed"
+	prefix="bins.chrWide"
+else
+	prefix="bins.size$binSize.step$binStep"
+fi
+
+# Generate bins
+if $chrWide; then
+	cat "$outdir/chr_size.tsv" | awk '{ print $1 "\t" 0 "\t" $2 }' \
+		> "$outdir/$prefix.bed"
 else
 	cat "$outdir/chr_size.tsv" | \
 		awk -v size=$binSize -v step=$binStep -f "mk_bins.awk" \
@@ -226,6 +238,17 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 		> "$outdir/bin_stats.$prefix.$fname.tsv"
 	rm "$binned"
 done
+
+# 4) Estimate centrality -------------------------------------------------------
+echo -e " Estimating centrality ..."
+
+for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
+	stats="$outdir/bin_stats.$prefix.$fname.tsv"
+
+	cond_n_reads=$(cat "${bedfiles[$bfi]}" | datamash sum 5)
+done
+
 
 
 # END ==========================================================================
