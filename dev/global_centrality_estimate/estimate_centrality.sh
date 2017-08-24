@@ -27,7 +27,7 @@ usage: ./estimate_centrality.sh [-h][-s binSize][-p binStep]
 
  Description:
   Calculate global centrality metrics. Requires bedtools for bin assignment,
-  datamash for calculations, and awk for text manipulation.
+  datamash for calculations, and gawk for text manipulation.
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -118,8 +118,8 @@ if [ ! -x "$(command -v datamash)" -o -z "$(command -v datamash)" ]; then
 	echo -e "$helps\n!!! ERROR! Missing datamash.\n"
 	exit 1
 fi
-if [ ! -x "$(command -v awk)" -o -z "$(command -v awk)" ]; then
-	echo -e "$helps\n!!! ERROR! Missing awk.\n"
+if [ ! -x "$(command -v gawk)" -o -z "$(command -v gawk)" ]; then
+	echo -e "$helps\n!!! ERROR! Missing gawk.\n"
 	exit 1
 fi
 
@@ -171,60 +171,117 @@ echo -e "$settings\n"
 
 # FUNCTIONS ====================================================================
 
+# Add human chromosome numeric ID as first column of a bed-like table
 add_chr_id='
-BEGIN {
-	OFS = FS = "\t";
-	convert["X"] = 23;
-	convert["Y"] = 24;
-}
-
-{
-	chrid = substr($1, 4);
-	if ( chrid in convert ) {
-		chrid = convert[chrid];
+	BEGIN {
+		OFS = FS = "\t";
+		convert["X"] = 23;
+		convert["Y"] = 24;
 	}
-	print chrid OFS $0;
-}'
 
-add_cs_sum='
-BEGIN {
-	OFS = FS = "\t";
-	sep = "~";
-}
+	{
+		chrid = substr($1, 4);
+		if ( chrid in convert ) {
+			chrid = convert[chrid];
+		}
+		print chrid OFS $0;
+	}'
 
-( FNR == NR ) {
-	k = $1 sep $2 sep $3;
-	a[k] = $0;
-	next;
-}
-
-{
-	k = $1 sep $2 sep $3;
-	if ( k in a ) {
-		print $0 OFS a[k];
+# Merge two bed files based on first three columns 
+merge_beds='
+	BEGIN {
+		OFS = FS = "\t";
+		sep = "~";
 	}
-}'
 
-mk_bins='
-BEGIN {
-	OFS = FS = "\t";
-}
-
-{
-	for ( i = 0; i < $2; i += step ) {
-		print $1 OFS i OFS i+size
+	( FNR == NR ) {
+		k = $1 sep $2 sep $3;
+		a[k] = $0;
+		next;
 	}
-}'
 
-normalize_read_count='
-BEGIN {
-	OFS = FS = "\t";
-}
+	{
+		k = $1 sep $2 sep $3;
+		if ( k in a ) {
+			print $0 OFS a[k];
+		}
+	}'
 
-{
-	$4 = $4 OFS $4 / (cnr * $7);
-	print $0 OFS bfi;
-}'
+# Produce a bed of bins
+mk_bins='BEGIN { OFS = FS = "\t"; }
+	{ for ( i = 0; i < $2; i += step ) { print $1 OFS i OFS i+size; } }'
+
+add_cnr_bfi='BEGIN { OFS = FS = "\t"; }
+	{
+		$4 = cnr OFS $4;
+		print $0 OFS bfi;
+	}'
+
+# Estimate centrality, requires two input variables:
+#  calc: 'ratio' or 'diff'
+#  type: '2p' (two point), 'f' (fixed) or 'g' (global)
+estimate_centrality='
+	BEGIN {
+		OFS = FS = "\t";
+
+	}
+
+	function estimate(calc, a, b) {
+		switch (calc) {
+			case "ratio":
+				return a / b;
+				break;
+			case "diff":
+				return a - b;
+				break;
+		}
+	}
+
+	{
+		if ( cumrat == 1) {
+			# Sum probabilities
+			for ( i = 2; i <= NF; i++ ) {
+				$i = $i + $(i-1);
+			}
+		}
+
+		if ( ratcum == 1 ) {
+			# Build table
+			for ( i = 1; i <= NF; i++ ) {
+				nf=split($i, ff, ",");
+				for ( j = 1; j <= nf; j++ ) {
+					a[i, j] = ff[j];
+				}
+			}
+			# Calculate ratio of cumulatives
+			for ( i = 1; i <= NF; i++ ) {
+				a[i, 2] += a[i - 1, 2];
+				a[i, 1] += a[i - 1, 1];
+				$i = a[i, 2] / (a[i, 1] * a[i, 3]);
+			}
+		}
+
+		switch (type) {
+			case "2p":
+				print estimate(calc, $NF, $1);
+				break;
+			case "f":
+				output = 0;
+				for ( i = 2; i <= NF; i++ ) {
+					output = output + estimate(calc, $i, $1);
+				}
+				print output;
+				break;
+			case "g":
+				output = 0;
+				for ( i = 2; i <= NF; i++ ) {
+					output = output + estimate(calc, $i, $(i-1));
+				}
+				print output;
+				break;
+		}
+	}'
+
 
 # RUN ==========================================================================
 
@@ -233,7 +290,7 @@ echo -e " Retrieving chromosome sizes ..."
 chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 
 # Sort chromosomes
-echo -e "$chrSize" | awk "$add_chr_id" | sort -k1,1n | cut -f2,3 \
+echo -e "$chrSize" | gawk "$add_chr_id" | sort -k1,1n | cut -f2,3 \
 	> "$outdir/chr_size.tsv"
 
 
@@ -249,11 +306,11 @@ fi
 
 # Generate bins
 if $chrWide; then
-	cat "$outdir/chr_size.tsv" | awk '{ print $1 "\t" 0 "\t" $2 }' \
+	cat "$outdir/chr_size.tsv" | gawk '{ print $1 "\t" 0 "\t" $2 }' \
 		> "$outdir/$prefix.bed" & pid=$!
 else
 	cat "$outdir/chr_size.tsv" | \
-		awk -v size=$binSize -v step=$binStep "$mk_bins" \
+		gawk -v size=$binSize -v step=$binStep "$mk_bins" \
 		> "$outdir/$prefix.bed" & pid=$!
 fi
 wait $pid; rm "$outdir/chr_size.tsv"
@@ -263,7 +320,7 @@ echo -e " Intersecting ..."
 
 # Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
+	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 	echo -e " > Intersecting $fname ..."
 	bedtools intersect -a "$outdir/$prefix.bed" \
 		 -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8\
@@ -281,48 +338,124 @@ echo -e " Calculating bin statistics ..."
 # Stats of cutsites
 echo -e " > Calculating for $csBed ..."
 cat "$outdir/intersected.$prefix.cutsites.tsv" | \
-	datamash -sg1,2,3 sum 4 | awk "$add_chr_id" | sort -k1,1n -k3,3n | \
+	datamash -sg1,2,3 sum 4 | gawk "$add_chr_id" | sort -k1,1n -k3,3n | \
 	cut -f2- > "$outdir/bin_stats.$prefix.cutsites.tsv" & pid=$!
 wait $pid; rm "$outdir/intersected.$prefix.cutsites.tsv"
 
 # Stats of beds
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
+	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 	binned="$outdir/intersected.$prefix.$fname.tsv"
 
 	# Calculate statistics
 	echo -e " > Calculating for $fname ..."
 	bin_stats=$(cat "$binned" | datamash -sg1,2,3 sum 4 mean 4 svar 4 | \
-		awk "$add_chr_id" | sort -k1,1n -k3,3n | cut -f2-)
+		gawk "$add_chr_id" | sort -k1,1n -k3,3n | cut -f2-)
 
 	# Add number of cutsites
-	awk "$add_cs_sum" <(cat "$outdir/bin_stats.$prefix.cutsites.tsv") \
+	gawk "$merge_beds" <(cat "$outdir/bin_stats.$prefix.cutsites.tsv") \
 		<(echo -e "$bin_stats") | cut -f 1-6,10 \
 		> "$outdir/bin_stats.$prefix.$fname.tsv" & pid=$!
 	wait $pid; rm "$binned"
 done
 rm "$outdir/bin_stats.$prefix.cutsites.tsv"
 
-# 4) Normalize per cutsite and condition ---------------------------------------
-echo -e " Estimating centrality ..."
+# 4) Assemble into bin data table ----------------------------------------------
+echo -e " Combining information ..."
 
 # Normalize read count by cutsite and condition
 norm=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | awk '{ print $NF }')
+	fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 	stats="$outdir/bin_stats.$prefix.$fname.tsv"
 
 	# Normalize
-	echo -e " > Normalizing for $fname ..."
+	#echo -e " > Normalizing for $fname ..."
 	cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 5)
-	norm="$norm"$(cat "$stats" | awk -v cnr=$cond_n_reads -v bfi=$bfi \
-		"$normalize_read_count")"\n"
+	norm="$norm"$(cat "$stats" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
+		"$add_cnr_bfi")"\n"
 	rm "$stats"
 done
 # Columns:
-# chr | start | end | readSum | readNorm | readMu | readSigma | nCS | condID
-echo -e "$norm" | awk "$add_chr_id" | sort -k1,1n -k3,3n -k10,10n | \
-	cut -f2- > "$outdir/normalized.$prefix.tsv"
+# 1   2     3   4        5       6      7         8   9
+# chr|start|end|condRead|readSum|readMu|readSigma|nCS|condID
+echo -e "$norm" | gawk "$add_chr_id" | sort -k1,1n -k3,3n -k10,10n | \
+	cut -f2- | sed 1d > "$outdir/normalized.$prefix.tsv"
+
+# 5) Estimate centrality -------------------------------------------------------
+echo -e " Estimating centrality ..."
+
+# Prepare paste string
+spaste=""; for i in $(seq 1 ${#bedfiles[@]}); do spaste="$spaste -"; done
+
+#---------------------#
+# Probability metrics #
+#---------------------#
+
+# Probability metric
+prob_mat=$(cut -f4,5,8 "$outdir/normalized.$prefix.tsv" | \
+	gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
+probability_two_points=$(echo -e "$prob_mat" | \
+	gawk -v calc="ratio" -v type="2p" "$estimate_centrality")
+probability_fixed=$(echo -e "$prob_mat" | \
+	gawk -v calc="ratio" -v type="f" "$estimate_centrality")
+probability_global=$(echo -e "$prob_mat" | \
+	gawk -v calc="ratio" -v type="g" "$estimate_centrality")
+
+# Cumulative ratio metric
+cumrat=$(cut -f4,5,8 "$outdir/normalized.$prefix.tsv" | \
+	gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
+cumrat_two_points=$(echo -e "$cumrat" | \
+	gawk -v calc="ratio" -v cumrat=1 -v type="2p" "$estimate_centrality")
+cumrat_fixed=$(echo -e "$cumrat" | \
+	gawk -v calc="ratio" -v cumrat=1 -v type="f" "$estimate_centrality")
+cumrat_global=$(echo -e "$cumrat" | \
+	gawk -v calc="ratio" -v cumrat=1 -v type="g" "$estimate_centrality")
+
+# Ratio cumulative metric
+ratcum=$(cut -f4,5,8 "$outdir/normalized.$prefix.tsv" | \
+	tr '\t' ',' | paste $spaste)
+ratcum_two_points=$(echo -e "$ratcum" | \
+	gawk -v calc="ratio" -v ratcum=1 -v type="2p" "$estimate_centrality")
+ratcum_fixed=$(echo -e "$ratcum" | \
+	gawk -v calc="ratio" -v ratcum=1 -v type="f" "$estimate_centrality")
+ratcum_global=$(echo -e "$ratcum" | \
+	gawk -v calc="ratio" -v ratcum=1 -v type="g" "$estimate_centrality")
+
+#---------------------#
+# Variability metrics #
+#---------------------#
+
+# Variance metric
+
+# Fano factor metric
+
+# Coefficient of variation metric
+
+#--------#
+# Output #
+#--------#
+
+# Prepare output table
+metrics=$(cut -f1-3 "$outdir/normalized.$prefix.tsv" | uniq | paste -d$'\t' - \
+	<(echo -e "$probability_two_points") \
+	<(echo -e "$probability_fixed") \
+	<(echo -e "$probability_global") \
+	<(echo -e "$cumrat_two_points") \
+	<(echo -e "$cumrat_fixed") \
+	<(echo -e "$cumrat_global") \
+	<(echo -e "$ratcum_two_points") \
+	<(echo -e "$ratcum_fixed") \
+	<(echo -e "$ratcum_global") \
+	)
+
+# Remove bin positions if chromosome wide
+if $chrWide; then
+	metrics=$(echo -e "$metrics" | cut -f1,4-)
+fi
+
+# Write output
+echo -e "$metrics" > "$outdir/estimates.$prefix.tsv"
 
 # END ==========================================================================
 
