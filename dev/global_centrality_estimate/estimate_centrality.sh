@@ -24,7 +24,7 @@ export LC_ALL=C
 # Help string
 helps="
 usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
-                                -o outdir -c csBed [BEDFILE]...
+                                [-u suffix] -o outdir -c csBed [BEDFILE]...
 
  Description:
   Estimate global centrality. The script performs the following steps:
@@ -65,6 +65,7 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
   -p binStep    Bin step in bp. Default to bin sizeinStep.
   -g groupSize  Group size in bp. Used to group bins for statistics calculation.
                 binSize must be divisible by groupSize. Not used by default.
+  -u suffix     Output name suffix.
 "
 
 # Default values
@@ -75,7 +76,7 @@ chrWide=true
 debugging=false
 
 # Parse options
-while getopts hds:p:g:o:c: opt; do
+while getopts hds:p:g:o:c:u: opt; do
     case $opt in
         h)
             # Help page
@@ -134,6 +135,13 @@ while getopts hds:p:g:o:c: opt; do
                 csBed=$OPTARG
             fi
         ;;
+        u)
+            # Suffix
+            suffix=$OPTARG
+
+            # Add leading dot
+            suffix=$(echo -e "$suffix" | sed -r 's/^([^\.])/\.\1/')
+        ;;
         ?)
             msg="!!! ERROR! Unrecognized option."
             echo -e "$help\n$msg"
@@ -189,10 +197,12 @@ fi
 if [ ! $binSize -eq 0 -a $binStep -eq 0 ]; then
     binStep=$binSize
 fi
-if [ ! 0 -eq $(bc <<< "$binSize % $groupSize") ]; then
-    msg="!!!ERROR! binSize ($binSize) must be divisible by groupSize."
-    echo -e " $helps\n$msg"
-    exit 1
+if [ 0 -ne $binSize -a 0 -ne $groupSize ]; then
+    if [ ! 0 -eq $(bc <<< "$binSize % $groupSize") ]; then
+        msg="!!!ERROR! binSize ($binSize) must be divisible by groupSize."
+        echo -e " $helps\n$msg"
+        exit 1
+    fi
 fi
 
 # Print settings
@@ -237,6 +247,9 @@ if $chrWide; then
     prefix="bins.chrWide"
 else
     prefix="bins.size$binSize.step$binStep"
+fi
+if [ 0 -ne $groupSize ]; then
+    prefix="$prefix.group$groupSize"
 fi
 
 # Generate bins
@@ -521,9 +534,9 @@ if $chrWide; then
 fi
 
 # Write
-echo -e "$comb" > "$outdir/combined.$prefix.tsv"
-echo -e "$metrics" > "$outdir/estimates.$prefix.tsv"
-echo -e "$ranked" > "$outdir/ranked.$prefix.tsv"
+echo -e "$comb" > "$outdir/combined.$prefix$suffix.tsv"
+echo -e "$metrics" > "$outdir/estimates.$prefix$suffix.tsv"
+echo -e "$ranked" > "$outdir/ranked.$prefix$suffix.tsv"
 
 # END ==========================================================================
 
