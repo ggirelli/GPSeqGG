@@ -9,6 +9,7 @@
 # Project: GPSeq - centrality estimation
 # Description: estimate genomic region nuclear centrality.
 # 
+# 
 # ------------------------------------------------------------------------------
 
 
@@ -22,12 +23,33 @@ export LC_ALL=C
 
 # Help string
 helps="
-usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep]
+usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
                                 -o outdir -c csBed [BEDFILE]...
 
  Description:
-  Calculate global centrality metrics. Requires bedtools for bin assignment,
-  datamash for calculations, and gawk for text manipulation.
+  Estimate global centrality. The script performs the following steps:
+   (1) Identify & sort chromosomes
+   (2) Generate bins
+   (3) Group cutsites (intersect)
+   (4) Assign grouped reads to bins (intersect)
+   (5) Calculate bin statistics
+   (6) Combine condition into a single table
+   (7) Estimate centrality
+   (8) Rank bins
+   (9) Write output
+ 
+ Requirements:
+  - bedtools for bin assignment
+  - datamash for calculations
+  - gawk for text manipulation.
+
+ Notes:
+  (A) Statistics (mean, variance) metrics take into account only cutsites
+      sensed in that condition. The script ignores 'zero' loci (with no reads).
+  (B) Depending on the sequencing resolution, it might not be feasible to go for
+      single-cutsite resolution. Thus, cutsite can be grouped for the statistics
+      calculation using the -g option.
+
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -41,16 +63,19 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep]
   -d            Debugging mode: save intermediate results.
   -s binSize    Bin size in bp. Default to chromosome-wide bins.
   -p binStep    Bin step in bp. Default to bin sizeinStep.
+  -g groupSize  Group size in bp. Used to group bins for statistics calculation.
+                binSize must be divisible by groupSize. Not used by default.
 "
 
 # Default values
 binSize=0
 binStep=0
+groupSize=0
 chrWide=true
 debugging=false
 
 # Parse options
-while getopts hds:p:o:c: opt; do
+while getopts hds:p:g:o:c: opt; do
     case $opt in
         h)
             # Help page
@@ -80,6 +105,16 @@ while getopts hds:p:o:c: opt; do
                 exit 1
             else
                 binStep=$OPTARG
+            fi
+        ;;
+        g)
+            # Group size
+            if [ $OPTARG -le 0 ]; then
+                msg="!!! ERROR! Invalid -g option. Group size must be > 0."
+                echo -e "$help\n$msg"
+                exit 1
+            else
+                groupSize=$OPTARG
             fi
         ;;
         o)
@@ -136,13 +171,13 @@ for bf in $*; do
     if [ -e $bf -a -n $bf ]; then
         bedfiles+=("$bf")
     else
-        msg="!!! Invalid bedfile, file not found.\n    File: $bf"
+        msg="!!!ERROR! Invalid bedfile, file not found.\n    File: $bf"
         echo -e " $helps\n$msg"
         exit 1
     fi
 done
 if [ 0 -eq ${#bedfiles[@]} ]; then
-    msg="!!! No bedfile was specified!\n"
+    msg="!!!ERROR! No bedfile was specified!\n"
     echo -e " $helps\n$msg"
     exit 1
 fi
@@ -153,6 +188,11 @@ if [ ! $binStep -eq 0 -a $binSize -eq 0 ]; then
 fi
 if [ ! $binSize -eq 0 -a $binStep -eq 0 ]; then
     binStep=$binSize
+fi
+if [ ! 0 -eq $(bc <<< "$binSize % $groupSize") ]; then
+    msg="!!!ERROR! binSize ($binSize) must be divisible by groupSize."
+    echo -e " $helps\n$msg"
+    exit 1
 fi
 
 # Print settings
@@ -189,7 +229,6 @@ chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
     cut -f2,3 > "$outdir/chr_size.tsv"
 
-
 # 1) Generate bin bed file -----------------------------------------------------
 echo -e " Generating bins ..."
 
@@ -209,27 +248,61 @@ else
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
         > "$outdir/$prefix.bed" & pid=$!
 fi
+
+# Generate groups
+if [ 0 -ne $groupSize ]; then
+    echo -e " Generating groups ..."
+    cat "$outdir/chr_size.tsv" | \
+        gawk -v size=$groupSize -v step=$groupSize -f "$awkdir/mk_bins.awk" \
+        > "$outdir/groups.$prefix.bed" & pid=$!
+fi
+
 wait $pid; if [ false == $debugging ]; then rm "$outdir/chr_size.tsv"; fi
 
-# 2) Intersect with bedtools ---------------------------------------------------
-echo -e " Intersecting ..."
+# 2) Group reads ---------------------------------------------------------------
+
+if [ 0 -ne $groupSize ]; then
+    echo -e " Grouping reads ..."
+
+    # Group every bed file
+    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+        fname=$(echo -e "${bedfiles[$bfi]}" | \
+            tr "/" "\t" | gawk '{ print $NF }')
+
+        bedtools intersect -a "$outdir/groups.$prefix.bed" \
+            -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 | \
+            gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
+            > "$outdir/grouped.$prefix.$fname.tsv" & pid=$!
+
+        # Point to group bed file instead of original one
+        bedfiles[$bfi]="$outdir/grouped.$prefix.$fname.tsv"
+    done
+
+    wait $pid; if [ false == $debugging ]; then
+        rm "$outdir/groups.$prefix.bed";
+    fi
+fi
+
+# 3) Intersect with bedtools ---------------------------------------------------
+echo -e " Assigning to bins ..."
 
 # Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    echo -e " > Intersecting $fname ..."
+
+    echo -e " > Assigning reads from $fname ..."
     bedtools intersect -a "$outdir/$prefix.bed" \
-         -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8\
+         -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 \
         > "$outdir/intersected.$prefix.$fname.tsv"
 done
 
 # Assign cutsites to bins
-echo -e " > Intersecting $csBed ..."
+echo -e " > Assigning cutsites from $csBed ..."
 bedtools intersect -a "$outdir/$prefix.bed" -b "$csBed" -c \
     > "$outdir/intersected.$prefix.cutsites.tsv" & pid=$!
 wait $pid; if [ false == $debugging ]; then rm "$outdir/$prefix.bed"; fi
 
-# 3) Calculate bin statistics --------------------------------------------------
+# 4) Calculate bin statistics --------------------------------------------------
 echo -e " Calculating bin statistics ..."
 
 # Stats of cutsites
@@ -264,31 +337,34 @@ if [ false == $debugging ]; then
     rm "$outdir/bin_stats.$prefix.cutsites.tsv";
 fi
 
-# 4) Assemble into bin data table ----------------------------------------------
+# 5) Assemble into bin data table ----------------------------------------------
 echo -e " Combining information ..."
 
-# Normalize read count by cutsite and condition
-norm=""
+# combalize read count by cutsite and condition
+comb=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
     stats="$outdir/bin_stats.$prefix.$fname.tsv"
 
-    # Normalize
-    #echo -e " > Normalizing for $fname ..."
+    # Combine
+    #echo -e " > combalizing for $fname ..."
     cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 5)
-    norm="$norm"$(cat "$stats" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
+    comb="$comb"$(cat "$stats" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
         -f "$awkdir/add_cnr_bfi.awk")"\n"
     if [ false == $debugging ]; then rm "$stats"; fi
 done
-# Columns of $norm:
+# Columns of $comb:
 # 1   2     3   4        5       6      7         8   9
 # chr|start|end|condRead|readSum|readMu|readSigma|nCS|condID
-norm=$(echo -e "$norm" | gawk -f "$awkdir/add_chr_id.awk" | \
+comb=$(echo -e "$comb" | gawk -f "$awkdir/add_chr_id.awk" | \
     sort -k1,1n -k3,3n -k10,10n  | cut -f2- | sed 1d )
 
-# Output
+# Remove grouped bed files
+if [ $groupSize -ne 0 -a false == $debugging ]; then
+    for bf in ${bedfiles[@]}; do rm $bf; done
+fi
 
-# 5) Estimate centrality -------------------------------------------------------
+# 6) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
 
 # Prepare paste string
@@ -299,7 +375,7 @@ spaste=""; for i in $(seq 1 ${#bedfiles[@]}); do spaste="$spaste -"; done
 #---------------------#
 
 # Probability metric
-prob_mat=$(echo -e "$norm" | cut -f4,5,8 | \
+prob_mat=$(echo -e "$comb" | cut -f4,5,8 | \
     gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
 probability_two_points=$(echo -e "$prob_mat" | \
     gawk -v calc="ratio" -v type="2p" -f "$awkdir/estimate_centrality.awk")
@@ -309,7 +385,7 @@ probability_global=$(echo -e "$prob_mat" | \
     gawk -v calc="ratio" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Cumulative ratio metric
-cumrat=$(echo -e "$norm" | cut -f4,5,8 | \
+cumrat=$(echo -e "$comb" | cut -f4,5,8 | \
     gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
 cumrat_two_points=$(echo -e "$cumrat" | \
     gawk -v calc="ratio" -v cumrat=1 -v type="2p" \
@@ -322,7 +398,7 @@ cumrat_global=$(echo -e "$cumrat" | \
     -f "$awkdir/estimate_centrality.awk")
 
 # Ratio cumulative metric
-ratcum=$(echo -e "$norm" | cut -f4,5,8 | \
+ratcum=$(echo -e "$comb" | cut -f4,5,8 | \
     tr '\t' ',' | paste $spaste)
 ratcum_two_points=$(echo -e "$ratcum" | \
     gawk -v calc="ratio" -v ratcum=1 -v type="2p" \
@@ -339,7 +415,7 @@ ratcum_global=$(echo -e "$ratcum" | \
 #---------------------#
 
 # Variance metric
-var_mat=$(echo -e "$norm" | cut -f7 | paste $spaste)
+var_mat=$(echo -e "$comb" | cut -f7 | paste $spaste)
 var_two_points=$(echo -e "$var_mat" | \
     gawk -v calc="logratio" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 var_fixed=$(echo -e "$var_mat" | \
@@ -348,7 +424,7 @@ var_fixed=$(echo -e "$var_mat" | \
 #   gawk -v calc="logratio" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Fano factor metric
-ff_mat=$(echo -e "$norm" | cut -f6,7 | \
+ff_mat=$(echo -e "$comb" | cut -f6,7 | \
     gawk '{ print $2 ** 2 / $1 }' | paste $spaste)
 ff_two_points=$(echo -e "$ff_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
@@ -358,7 +434,7 @@ ff_fixed=$(echo -e "$ff_mat" | \
 #   gawk -v calc="diff" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Coefficient of variation metric
-cv_mat=$(echo -e "$norm" | cut -f6,7 | \
+cv_mat=$(echo -e "$comb" | cut -f6,7 | \
     gawk '{ print $2 / $1 }' | paste $spaste)
 cv_two_points=$(echo -e "$cv_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
@@ -372,7 +448,7 @@ cv_fixed=$(echo -e "$cv_mat" | \
 #----------#
 
 # Prepare output table
-metrics=$(echo -e "$norm" | cut -f1-3 | uniq | paste -d$'\t' - \
+metrics=$(echo -e "$comb" | cut -f1-3 | uniq | paste -d$'\t' - \
     <(echo -e "$probability_two_points") \
     <(echo -e "$probability_fixed") \
     <(echo -e "$probability_global") \
@@ -390,7 +466,7 @@ metrics=$(echo -e "$norm" | cut -f1-3 | uniq | paste -d$'\t' - \
     <(echo -e "$cv_fixed") \
     )
 
-# 6) Rank bins -----------------------------------------------------------------
+# 7) Rank bins -----------------------------------------------------------------
 echo -e " Ranking bins ..."
 
 ranked=""
@@ -405,17 +481,17 @@ for mi in $(seq 4 $n_metrics); do
 done
 
 
-# 7) Output --------------------------------------------------------------------
+# 8) Output --------------------------------------------------------------------
 echo -e " Writing output ..."
 
 #------------#
 # Add header #
 #------------#
 
-# Normalization table
+# combalization table
 header="chr\tstart\tend"
 header="$header\tcondRead\treadSum\treadMu\treadSigma\tnCS\tcondID"
-norm=$(echo -e "$norm" | \
+comb=$(echo -e "$comb" | \
     gawk -v header="$header" -f "$awkdir/add_header.awk")
 
 # Metrics table
@@ -440,12 +516,12 @@ ranked=$(echo -e "$ranked" | \
 
 # Remove bin positions if chromosome wide
 if $chrWide; then
-    norm=$(echo -e "$norm" | cut -f1,4-)
+    comb=$(echo -e "$comb" | cut -f1,4-)
     metrics=$(echo -e "$metrics" | cut -f1,4-)
 fi
 
 # Write
-echo -e "$norm" > "$outdir/normalized.$prefix.tsv"
+echo -e "$comb" > "$outdir/combined.$prefix.tsv"
 echo -e "$metrics" > "$outdir/estimates.$prefix.tsv"
 echo -e "$ranked" > "$outdir/ranked.$prefix.tsv"
 
