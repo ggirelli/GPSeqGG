@@ -215,7 +215,13 @@ else
    Bin size : $binSize
    Bin step : $binStep"
 fi
-if $debugging; then settings="$settings\n Debugging mode ON."; fi
+if [ 0 -ne $groupSize ]; then
+    settings="$settings
+ Group size : $groupSize"
+fi
+if $debugging; then
+    settings="$settings\n\n Debugging mode ON."
+fi
 settings="$settings
  
  Output dir : $outdir
@@ -283,8 +289,8 @@ if [ 0 -ne $groupSize ]; then
             tr "/" "\t" | gawk '{ print $NF }')
 
         bedtools intersect -a "$outdir/groups.$prefix.bed" \
-            -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 | \
-            gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
+            -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
+            sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
             > "$outdir/grouped.$prefix.$fname.tsv" & pid=$!
 
         # Point to group bed file instead of original one
@@ -372,6 +378,9 @@ done
 comb=$(echo -e "$comb" | gawk -f "$awkdir/add_chr_id.awk" | \
     sort -k1,1n -k3,3n -k10,10n  | cut -f2- | sed 1d )
 
+# Discard bins with no cutsites from the analysis
+#comb=$(echo -e "$comb" | gawk '0 != $8')
+
 # Remove grouped bed files
 if [ $groupSize -ne 0 -a false == $debugging ]; then
     for bf in ${bedfiles[@]}; do rm $bf; done
@@ -389,7 +398,7 @@ spaste=""; for i in $(seq 1 ${#bedfiles[@]}); do spaste="$spaste -"; done
 
 # Probability metric
 prob_mat=$(echo -e "$comb" | cut -f4,5,8 | \
-    gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
+    gawk -v type="p" -f "$awkdir/pre_process.awk" | paste $spaste)
 probability_two_points=$(echo -e "$prob_mat" | \
     gawk -v calc="ratio" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 probability_fixed=$(echo -e "$prob_mat" | \
@@ -398,8 +407,7 @@ probability_global=$(echo -e "$prob_mat" | \
     gawk -v calc="ratio" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Cumulative ratio metric
-cumrat=$(echo -e "$comb" | cut -f4,5,8 | \
-    gawk '{ print $2 / ($1 * $3) }' | paste $spaste)
+cumrat=prob_mat
 cumrat_two_points=$(echo -e "$cumrat" | \
     gawk -v calc="ratio" -v cumrat=1 -v type="2p" \
     -f "$awkdir/estimate_centrality.awk")
@@ -438,7 +446,7 @@ var_fixed=$(echo -e "$var_mat" | \
 
 # Fano factor metric
 ff_mat=$(echo -e "$comb" | cut -f6,7 | \
-    gawk '{ print $2 ** 2 / $1 }' | paste $spaste)
+    gawk -v type="ff" -f "$awkdir/pre_process.awk" | paste $spaste)
 ff_two_points=$(echo -e "$ff_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 ff_fixed=$(echo -e "$ff_mat" | \
@@ -448,7 +456,7 @@ ff_fixed=$(echo -e "$ff_mat" | \
 
 # Coefficient of variation metric
 cv_mat=$(echo -e "$comb" | cut -f6,7 | \
-    gawk '{ print $2 / $1 }' | paste $spaste)
+    gawk -v type="cv" -f "$awkdir/pre_process.awk" | paste $spaste)
 cv_two_points=$(echo -e "$cv_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 cv_fixed=$(echo -e "$cv_mat" | \

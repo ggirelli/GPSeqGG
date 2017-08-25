@@ -13,22 +13,40 @@ BEGIN {
 }
 
 function estimate(calc, a, b) {
-	switch (calc) {
-		case "ratio":
-			return a / b;
-			break;
-		case "diff":
-			return a - b;
-			break;
-		case "logratio":
-			return log(a / b);
-			break;
+	# Return NA if either factors are NA
+	if ( "NA" == a || "NA" == b ) {
+		return "NA";
+	} else {
+		switch (calc) {
+			case "ratio": {
+				# Do not allow division by 0
+				if ( 0 == b ) {
+					return "NA";
+				} else {
+					return a / b;
+				}
+				break;
+			}
+			case "diff": {
+				return a - b;
+				break;
+			}
+			case "logratio": {
+				# Do not allow division by 0 or log(0)
+				if ( 0 <= b || 0 <= a ) {
+					return "NA";
+				} else {
+					return log(a / b);
+				}
+				break;
+			}
+		}
 	}
 }
 
 {
 	# Cumulative ratio
-	if ( cumrat == 1) {
+	if ( 1 == cumrat) {
 		# Sum probabilities
 		for ( i = 2; i <= NF; i++ ) {
 			$i = $i + $(i-1);
@@ -36,7 +54,7 @@ function estimate(calc, a, b) {
 	}
 
 	# Ratio of cumulatives
-	if ( ratcum == 1 ) {
+	if ( 1 == ratcum ) {
 		# Build table
 		for ( i = 1; i <= NF; i++ ) {
 			nf=split($i, ff, ",");
@@ -48,7 +66,11 @@ function estimate(calc, a, b) {
 		for ( i = 1; i <= NF; i++ ) {
 			a[i, 2] += a[i - 1, 2];
 			a[i, 1] += a[i - 1, 1];
-			$i = a[i, 2] / (a[i, 1] * a[i, 3]);
+			if ( 0 == a[i, 2] || 0 == a[i, 3] || "NA" == $(i - 1)) {
+				$i = "NA";
+			} else {
+				$i = a[i, 2] / (a[i, 1] * a[i, 3]);
+			}
 		}
 	}
 
@@ -58,16 +80,37 @@ function estimate(calc, a, b) {
 			print estimate(calc, $NF, $1);
 			break;
 		case "f":
+			if ( "NA" == $1 ) {
+				print "NA";
+				break;
+			}
+
 			output = 0;
 			for ( i = 2; i <= NF; i++ ) {
-				output = output + estimate(calc, $i, $1);
+				new_value = estimate(calc, $i, $1);
+				if ( "NA" == new_value ) {
+					output = new_value;
+				}
+				if ( "NA" == output ) {
+					break;
+				} else {
+					output = output + new_value;
+				}
 			}
 			print output;
 			break;
 		case "g":
 			output = 0;
 			for ( i = 2; i <= NF; i++ ) {
-				output = output + estimate(calc, $i, $(i-1));
+				new_value = estimate(calc, $i, $(i-1));
+				if ( "NA" == new_value ) {
+					output = new_value;
+				}
+				if ( "NA" == output ) {
+					break;
+				} else {
+					output = output + new_value;
+				}
 			}
 			print output;
 			break;
