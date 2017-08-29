@@ -351,7 +351,7 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 
     # Calculate statistics
     echo -e " > Calculating for $fname ..."
-    bin_stats=$(cat "$binned" | datamash -sg1,2,3 sum 4 mean 4 svar 4 | \
+    bin_stats=$(cat "$binned" | datamash -sg1,2,3 sum 4 mean 4 sstdev 4 | \
         gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2-)
 
     # Add number of cutsites
