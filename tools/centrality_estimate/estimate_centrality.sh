@@ -9,7 +9,6 @@
 # Project: GPSeq - centrality estimation
 # Description: estimate genomic region nuclear centrality.
 # 
-# 
 # ------------------------------------------------------------------------------
 
 
