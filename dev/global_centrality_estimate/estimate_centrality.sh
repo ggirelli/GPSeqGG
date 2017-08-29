@@ -205,6 +205,14 @@ if [ 0 -ne $binSize -a 0 -ne $groupSize ]; then
         exit 1
     fi
 fi
+if [ 0 -ne $binStep -a 0 -ne $groupSize ]; then
+    if [ $binStep -lt $groupSize ]; then
+        msg="!!!WARNING! Using binStep as groupSize.\n            groupSize"
+        msg="$msg should be smaller than or equal to binStep."
+        echo -e " $helps\n$msg"
+        groupSize=$binStep
+    fi
+fi
 
 # Print settings
 settings=""
