@@ -24,7 +24,8 @@ export LC_ALL=C
 # Help string
 helps="
 usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
-                                [-u suffix] -o outdir -c csBed [BEDFILE]...
+                                [-r prefix][-u suffix]
+                                -o outdir -c csBed [BEDFILE]...
 
  Description:
   Estimate global centrality. The script performs the following steps:
@@ -66,6 +67,7 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
   -p binStep    Bin step in bp. Default to bin sizeinStep.
   -g groupSize  Group size in bp. Used to group bins for statistics calculation.
                 binSize must be divisible by groupSize. Not used by default.
+  -r prefix     Output name prefix.
   -u suffix     Output name suffix.
 "
 
@@ -77,7 +79,7 @@ chrWide=true
 debugging=false
 
 # Parse options
-while getopts hds:p:g:o:c:u: opt; do
+while getopts hds:p:g:o:c:r:u: opt; do
     case $opt in
         h)
             # Help page
@@ -136,12 +138,20 @@ while getopts hds:p:g:o:c:u: opt; do
                 csBed=$OPTARG
             fi
         ;;
+        r)
+            # Prefix
+            out_prefix=$OPTARG
+
+            # Add trailing dot
+            out_prefix=$(echo -e "$out_prefix" | sed -r 's/([^\.])$/\1\./' | \
+                tr ' ' '_')
+        ;;
         u)
             # Suffix
             suffix=$OPTARG
 
             # Add leading dot
-            suffix=$(echo -e "$suffix" | sed -r 's/^([^\.])/\.\1/')
+            suffix=$(echo -e "$suffix" | sed -r 's/^([^\.])/\.\1/' | tr ' ' '_')
         ;;
         ?)
             msg="!!! ERROR! Unrecognized option."
@@ -231,6 +241,14 @@ fi
 if $debugging; then
     settings="$settings\n\n Debugging mode ON."
 fi
+if [ -n "$out_prefix" ]; then
+    settings="$settings
+     Prefix : '$out_prefix'"
+fi
+if [ -n "$suffix" ]; then
+    settings="$settings
+     Suffix : '$suffix'"
+fi
 settings="$settings
  
  Output dir : $outdir
@@ -252,16 +270,16 @@ chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 
 # Sort chromosomes
 echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
-    cut -f2,3 > "$outdir/chr_size.tsv"
+    cut -f2,3 > "$outdir/"$out_prefix"chr_size$suffix.tsv"
 
 # 1) Generate bin bed file -----------------------------------------------------
 echo -e " Generating bins ..."
 
 # Set output prefix
 if $chrWide; then
-    prefix="bins.chrWide"
+    prefix=$prefix"bins.chrWide"
 else
-    prefix="bins.size$binSize.step$binStep"
+    prefix=$prefix"bins.size$binSize.step$binStep"
 fi
 if [ 0 -ne $groupSize ]; then
     prefix="$prefix.group$groupSize"
@@ -269,23 +287,27 @@ fi
 
 # Generate bins
 if $chrWide; then
-    cat "$outdir/chr_size.tsv" | gawk '{ print $1 "\t" 0 "\t" $2 }' \
-        > "$outdir/$prefix.bed" & pid=$!
+    cat "$outdir/"$out_prefix"chr_size.tsv" | \
+        gawk '{ print $1 "\t" 0 "\t" $2 }' \
+        > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
 else
-    cat "$outdir/chr_size.tsv" | \
+    cat "$outdir/"$out_prefix"chr_size.tsv" | \
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
-        > "$outdir/$prefix.bed" & pid=$!
+        > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
 fi
 
 # Generate groups
 if [ 0 -ne $groupSize ]; then
     echo -e " Generating groups ..."
-    cat "$outdir/chr_size.tsv" | \
+    cat "$outdir/"$out_prefix"chr_size.tsv" | \
         gawk -v size=$groupSize -v step=$groupSize -f "$awkdir/mk_bins.awk" \
-        > "$outdir/groups.$prefix.bed" & pid=$!
+        > "$outdir/"$out_prefix"groups.$prefix.bed" & pid=$!
 fi
 
-wait $pid; if [ false == $debugging ]; then rm "$outdir/chr_size.tsv"; fi
+wait $pid
+if [ false == $debugging ]; then
+    rm "$outdir/"$out_prefix"chr_size.tsv"
+fi
 
 # 2) Group reads ---------------------------------------------------------------
 
@@ -297,17 +319,17 @@ if [ 0 -ne $groupSize ]; then
         fname=$(echo -e "${bedfiles[$bfi]}" | \
             tr "/" "\t" | gawk '{ print $NF }')
 
-        bedtools intersect -a "$outdir/groups.$prefix.bed" \
+        bedtools intersect -a "$outdir/"$out_prefix"groups.$prefix.bed" \
             -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
             sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
-            > "$outdir/grouped.$prefix.$fname.tsv" & pid=$!
+            > "$outdir/"$out_prefix"grouped.$prefix.$fname.tsv" & pid=$!
 
         # Point to group bed file instead of original one
-        bedfiles[$bfi]="$outdir/grouped.$prefix.$fname.tsv"
+        bedfiles[$bfi]="$outdir/"$out_prefix"grouped.$prefix.$fname.tsv"
     done
 
     wait $pid; if [ false == $debugging ]; then
-        rm "$outdir/groups.$prefix.bed";
+        rm "$outdir/"$out_prefix"groups.$prefix.bed";
     fi
 fi
 
@@ -319,35 +341,38 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 
     echo -e " > Assigning reads from $fname ..."
-    bedtools intersect -a "$outdir/$prefix.bed" \
+    bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
          -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 \
-        > "$outdir/intersected.$prefix.$fname.tsv"
+        > "$outdir/"$out_prefix"intersected.$prefix.$fname.tsv"
 done
 
 # Assign cutsites to bins
 echo -e " > Assigning cutsites from $csBed ..."
-bedtools intersect -a "$outdir/$prefix.bed" -b "$csBed" -c \
-    > "$outdir/intersected.$prefix.cutsites.tsv" & pid=$!
-wait $pid; if [ false == $debugging ]; then rm "$outdir/$prefix.bed"; fi
+bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" -b "$csBed" -c \
+    > "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv" & pid=$!
+wait $pid
+if [ false == $debugging ]; then
+    rm "$outdir/"$out_prefix"$prefix.bed"
+fi
 
 # 4) Calculate bin statistics --------------------------------------------------
 echo -e " Calculating bin statistics ..."
 
 # Stats of cutsites
 echo -e " > Calculating for $csBed ..."
-cat "$outdir/intersected.$prefix.cutsites.tsv" | \
+cat "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv" | \
     datamash -sg1,2,3 sum 4 | gawk -f "$awkdir/add_chr_id.awk" | \
         sort -k1,1n -k3,3n |  cut -f2- \
-        > "$outdir/bin_stats.$prefix.cutsites.tsv" & pid=$!
+        > "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv" & pid=$!
 wait $pid;
 if [ false == $debugging ]; then
-    rm "$outdir/intersected.$prefix.cutsites.tsv";
+    rm "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv";
 fi
 
 # Stats of beds
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    binned="$outdir/intersected.$prefix.$fname.tsv"
+    binned="$outdir/"$out_prefix"intersected.$prefix.$fname.tsv"
 
     # Calculate statistics
     echo -e " > Calculating for $fname ..."
@@ -356,13 +381,13 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 
     # Add number of cutsites
     gawk -f "$awkdir/merge_beds.awk" \
-        <(cat "$outdir/bin_stats.$prefix.cutsites.tsv") \
+        <(cat "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv") \
         <(echo -e "$bin_stats") | cut -f 1-6,10 \
-        > "$outdir/bin_stats.$prefix.$fname.tsv" & pid=$!
+        > "$outdir/"$out_prefix"bin_stats.$prefix.$fname.tsv" & pid=$!
     wait $pid; if [ false == $debugging ]; then rm "$binned"; fi
 done
 if [ false == $debugging ]; then
-    rm "$outdir/bin_stats.$prefix.cutsites.tsv";
+    rm "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv";
 fi
 
 # 5) Assemble into bin data table ----------------------------------------------
@@ -372,7 +397,7 @@ echo -e " Combining information ..."
 comb=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    stats="$outdir/bin_stats.$prefix.$fname.tsv"
+    stats="$outdir/"$out_prefix"bin_stats.$prefix.$fname.tsv"
 
     # Combine
     #echo -e " > combalizing for $fname ..."
@@ -567,9 +592,9 @@ if $chrWide; then
 fi
 
 # Write
-echo -e "$comb" > "$outdir/combined.$prefix$suffix.tsv"
-echo -e "$metrics" > "$outdir/estimates.$prefix$suffix.tsv"
-echo -e "$ranked" > "$outdir/ranked.$prefix$suffix.tsv"
+echo -e "$comb" > "$outdir/"$out_prefix"combined.$prefix$suffix.tsv"
+echo -e "$metrics" > "$outdir/"$out_prefix"estimates.$prefix$suffix.tsv"
+echo -e "$ranked" > "$outdir/"$out_prefix"ranked.$prefix$suffix.tsv"
 
 # END ==========================================================================
 
