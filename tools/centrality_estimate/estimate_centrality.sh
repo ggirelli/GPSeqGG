@@ -24,8 +24,8 @@ export LC_ALL=C
 # Help string
 helps="
 usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
-                                [-r prefix][-u suffix]
-                                -o outdir -c csBed [BEDFILE]...
+                                [-r prefix][-u suffix] -o outdir -c csBed
+                                [BEDFILE]...
 
  Description:
   Estimate global centrality. The script performs the following steps:
@@ -58,11 +58,13 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
   -c csBed      Cutsite bedfile.
   BEDFILE       At least two (2) GPSeq condition bedfiles, space-separated and
                 in increasing order of restriction conditions intensity.
-                Expected to be ordered per condition.
+                Expected to be ordered per condition. As BEDFILE is a positional
+                argument, it should be provided after any other argument.
 
  Optional arguments:
   -h            Show this help page.
   -d            Debugging mode: save intermediate results.
+  -n            Use last condition for normalization.
   -s binSize    Bin size in bp. Default to chromosome-wide bins.
   -p binStep    Bin step in bp. Default to bin sizeinStep.
   -g groupSize  Group size in bp. Used to group bins for statistics calculation.
@@ -77,9 +79,10 @@ binStep=0
 groupSize=0
 chrWide=true
 debugging=false
+normlast=false
 
 # Parse options
-while getopts hds:p:g:o:c:r:u: opt; do
+while getopts hdns:p:g:o:c:r:u: opt; do
     case $opt in
         h)
             # Help page
@@ -89,6 +92,10 @@ while getopts hds:p:g:o:c:r:u: opt; do
         d)
             # Debugging mode
             debugging=true
+        ;;
+        n)
+            # Normalize with last condition
+            normlast=true
         ;;
         s)
             # Bin size
@@ -234,21 +241,30 @@ else
    Bin size : $binSize
    Bin step : $binStep"
 fi
+
 if [ 0 -ne $groupSize ]; then
     settings="$settings
  Group size : $groupSize"
 fi
-if $debugging; then
-    settings="$settings\n\n Debugging mode ON."
-fi
+
 if [ -n "$out_prefix" ]; then
     settings="$settings
      Prefix : '$out_prefix'"
 fi
+
 if [ -n "$suffix" ]; then
     settings="$settings
      Suffix : '$suffix'"
 fi
+
+if $normlast; then
+    settings="$settings\n\n Normalizing with last condition."
+fi
+
+if $debugging; then
+    settings="$settings\n\n Debugging mode ON."
+fi
+
 settings="$settings
  
  Output dir : $outdir
