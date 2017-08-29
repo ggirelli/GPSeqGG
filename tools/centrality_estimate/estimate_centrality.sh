@@ -23,14 +23,14 @@ export LC_ALL=C
 # Help string
 helps="
 usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
-                                [-r prefix][-u suffix] -o outdir -c csBed
-                                [BEDFILE]...
+                                [-r prefix][-u suffix] -o outdir [BEDFILE]...
 
  Description:
   Estimate global centrality. The script performs the following steps:
    (1) Identify & sort chromosomes
    (2) Generate bins
    (3) Group cutsites (intersect)
+   (·) Normalize over last condition.
    (4) Assign grouped reads to bins (intersect)
    (5) Calculate bin statistics
    (6) Combine condition into a single table
@@ -44,8 +44,9 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
   - gawk for text manipulation.
 
  Notes:
-  (A) Statistics (mean, variance) metrics take into account only cutsites
-      sensed in that condition. The script ignores 'zero' loci (with no reads).
+  (A) Statistics (mean, variance) metrics take into account only cutsites sensed
+      in that condition. The script ignores 'zero' loci (with no reads). This is
+      true for both probability- and variability-based metrics.
   (B) Depending on the sequencing resolution, it might not be feasible to go for
       single-cutsite resolution. Thus, cutsite can be grouped for the statistics
       calculation using the -g option.
@@ -54,7 +55,6 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
 
  Mandatory arguments:
   -o outdir     Output folder.
-  -c csBed      Cutsite bedfile.
   BEDFILE       At least two (2) GPSeq condition bedfiles, space-separated and
                 in increasing order of restriction conditions intensity.
                 Expected to be ordered per condition. As BEDFILE is a positional
@@ -81,7 +81,7 @@ debugging=false
 normlast=false
 
 # Parse options
-while getopts hdns:p:g:o:c:r:u: opt; do
+while getopts hdns:p:g:o:r:u: opt; do
     case $opt in
         h)
             # Help page
@@ -134,16 +134,6 @@ while getopts hdns:p:g:o:c:r:u: opt; do
             fi
             outdir=$OPTARG
         ;;
-        c)
-            # Cutsite bedfile
-            if [ ! -e $OPTARG ]; then
-                msg="!!! ERROR! Invalid -c option. File not found: $OPTARG"
-                echo -e "$help\n$msg"
-                exit 1
-            else
-                csBed=$OPTARG
-            fi
-        ;;
         r)
             # Prefix
             out_prefix=$OPTARG
@@ -170,10 +160,6 @@ done
 # Check mandatory options
 if [ -z "$outdir" ]; then
     echo -e "$helps\n!!! ERROR! Missing mandatory -o option.\n"
-    exit 1
-fi
-if [ -z "$csBed" ]; then
-    echo -e "$helps\n!!! ERROR! Missing mandatory -c option.\n"
     exit 1
 fi
 if [ ! -x "$(command -v bedtools)" -o -z "$(command -v bedtools)" ]; then
@@ -267,7 +253,6 @@ fi
 settings="$settings
  
  Output dir : $outdir
-   Cutsites : $csBed
   Bed files :
    $(echo ${bedfiles[@]} | sed 's/ /\n   /g')"
 
@@ -278,7 +263,7 @@ awkdir="`dirname ${BASH_SOURCE}`/awk/"
 
 # RUN ==========================================================================
 
-# 0) Identify chromosome sizes -------------------------------------------------
+# 1) Identify chromosome sizes -------------------------------------------------
 
 echo -e " Retrieving chromosome sizes ..."
 chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
@@ -287,7 +272,8 @@ chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
     cut -f2,3 > "$outdir/"$out_prefix"chr_size$suffix.tsv"
 
-# 1) Generate bin bed file -----------------------------------------------------
+
+# 2) Generate bin bed file -----------------------------------------------------
 echo -e " Generating bins ..."
 
 # Set output prefix
@@ -302,11 +288,11 @@ fi
 
 # Generate bins
 if $chrWide; then
-    cat "$outdir/"$out_prefix"chr_size.tsv" | \
+    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
         gawk '{ print $1 "\t" 0 "\t" $2 }' \
         > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
 else
-    cat "$outdir/"$out_prefix"chr_size.tsv" | \
+    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
         > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
 fi
@@ -314,17 +300,18 @@ fi
 # Generate groups
 if [ 0 -ne $groupSize ]; then
     echo -e " Generating groups ..."
-    cat "$outdir/"$out_prefix"chr_size.tsv" | \
+    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
         gawk -v size=$groupSize -v step=$groupSize -f "$awkdir/mk_bins.awk" \
         > "$outdir/"$out_prefix"groups.$prefix.bed" & pid=$!
 fi
 
 wait $pid
 if [ false == $debugging ]; then
-    rm "$outdir/"$out_prefix"chr_size.tsv"
+    rm "$outdir/"$out_prefix"chr_size$suffix.tsv"
 fi
 
-# 2) Group reads ---------------------------------------------------------------
+
+# 3) Group reads ---------------------------------------------------------------
 
 if [ 0 -ne $groupSize ]; then
     echo -e " Grouping reads ..."
@@ -348,78 +335,103 @@ if [ 0 -ne $groupSize ]; then
     fi
 fi
 
-# 3) Intersect with bedtools ---------------------------------------------------
+
+# ·) Normalize over last conditon ----------------------------------------------
+
+# Remove zero-loci
+echo -e " Removing cutsites/groups with zero reads ..."
+for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+    if [ 0 -ne $groupSize ]; then
+        outfile=$(echo -e "${bedfiles[$bfi]}" | sed "s/grouped/nzl/")
+    else
+        outfile="$outdir/"$out_prefix"nzl.${bedfiles[$bfi]}"
+    fi
+
+    # Remove zero-loci or empty groups
+    cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outfile" & pid=$!
+
+    # Remove grouped bed file
+    wait $pid
+    if [ 0 -ne $groupSize -a false == $debugging ]; then
+        rm "${bedfiles[$bfi]}"
+    fi
+
+    # Point to non-zero-loci bed file instead of original one
+    bedfiles[$bfi]="$outfile"
+done
+
+if $normlast; then
+    echo -e " Normalizing over last condition ..."
+
+    # Intersect and keep only regions present in last condition
+    
+    # Normalize and convert to bed
+fi
+
+
+# 4) Intersect with bedtools ---------------------------------------------------
 echo -e " Assigning to bins ..."
 
 # Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
+    outfile=$(echo -e "$infile" | sed 's/nzl/intersected/')
 
-    echo -e " > Assigning reads from $fname ..."
+    echo -e " > Assigning reads from $infile ..."
     bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
          -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 \
-        > "$outdir/"$out_prefix"intersected.$prefix.$fname.tsv"
+        > "$outdir/$outfile" & pid=$!
+
+    # Remove nzl file
+    wait $pid; if [ false == $debugging ]; then rm ${bedfiles[$bfi]}; fi
+
+    # Point to binned bed file instead of original one
+    bedfiles[$bfi]="$outdir/$outfile"
 done
 
-# Assign cutsites to bins
-echo -e " > Assigning cutsites from $csBed ..."
-bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" -b "$csBed" -c \
-    > "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv" & pid=$!
-wait $pid
+# Remove bin bed
 if [ false == $debugging ]; then
     rm "$outdir/"$out_prefix"$prefix.bed"
 fi
 
-# 4) Calculate bin statistics --------------------------------------------------
-echo -e " Calculating bin statistics ..."
 
-# Stats of cutsites
-echo -e " > Calculating for $csBed ..."
-cat "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv" | \
-    datamash -sg1,2,3 sum 4 | gawk -f "$awkdir/add_chr_id.awk" | \
-        sort -k1,1n -k3,3n |  cut -f2- \
-        > "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv" & pid=$!
-wait $pid;
-if [ false == $debugging ]; then
-    rm "$outdir/"$out_prefix"intersected.$prefix.cutsites.tsv";
-fi
+# 5) Calculate bin statistics --------------------------------------------------
+echo -e " Calculating bin statistics ..."
 
 # Stats of beds
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    binned="$outdir/"$out_prefix"intersected.$prefix.$fname.tsv"
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
+    outfile=$(echo -e "$infile" | sed 's/intersected/bin_stats/')
 
     # Calculate statistics
-    echo -e " > Calculating for $fname ..."
-    bin_stats=$(cat "$binned" | datamash -sg1,2,3 sum 4 mean 4 sstdev 4 | \
-        gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2-)
+    echo -e " > Calculating for $infile ..."
+    cat "${bedfiles[$bfi]}" | datamash -sg1,2,3 sum 4 mean 4 sstdev 4 count 4 \
+        | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2- \
+        > "$outdir/$outfile" & pid=$!
 
-    # Add number of cutsites
-    gawk -f "$awkdir/merge_beds.awk" \
-        <(cat "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv") \
-        <(echo -e "$bin_stats") | cut -f 1-6,10 \
-        > "$outdir/"$out_prefix"bin_stats.$prefix.$fname.tsv" & pid=$!
-    wait $pid; if [ false == $debugging ]; then rm "$binned"; fi
+    # Remove binned
+    wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
+
+    # Point to stats bed file instead of original one
+    bedfiles[$bfi]="$outdir/$outfile"
 done
-if [ false == $debugging ]; then
-    rm "$outdir/"$out_prefix"bin_stats.$prefix.cutsites.tsv";
-fi
 
-# 5) Assemble into bin data table ----------------------------------------------
+
+# 6) Assemble into bin data table ----------------------------------------------
 echo -e " Combining information ..."
 
 # combalize read count by cutsite and condition
 comb=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    fname=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    stats="$outdir/"$out_prefix"bin_stats.$prefix.$fname.tsv"
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 
     # Combine
-    #echo -e " > combalizing for $fname ..."
     cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 5)
-    comb="$comb"$(cat "$stats" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
-        -f "$awkdir/add_cnr_bfi.awk")"\n"
-    if [ false == $debugging ]; then rm "$stats"; fi
+    comb="$comb"$(cat "$infile" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
+        -f "$awkdir/add_cnr_bfi.awk")"\n" & pid=$!
+
+    # Remove bin_stats
+    wait $pid; if [ false == $debugging ]; then rm "$outdir/$infile"; fi
 done
 # Columns of $comb:
 # 1   2     3   4        5       6      7         8   9
@@ -435,7 +447,7 @@ if [ $groupSize -ne 0 -a false == $debugging ]; then
     for bf in ${bedfiles[@]}; do rm $bf; done
 fi
 
-# 6) Estimate centrality -------------------------------------------------------
+# 7) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
 
 # Prepare paste string
@@ -542,7 +554,7 @@ metrics=$(echo -e "$comb" | cut -f1-3 | uniq | paste -d$'\t' - \
     <(echo -e "$cv_fixed") \
     )
 
-# 7) Rank bins -----------------------------------------------------------------
+# 8) Rank bins -----------------------------------------------------------------
 echo -e " Ranking bins ..."
 
 ranked=""
@@ -567,7 +579,7 @@ for mi in $(seq 4 $n_metrics); do
 done
 
 
-# 8) Output --------------------------------------------------------------------
+# 9) Output --------------------------------------------------------------------
 echo -e " Writing output ..."
 
 #------------#

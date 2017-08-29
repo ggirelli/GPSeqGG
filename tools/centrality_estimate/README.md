@@ -17,6 +17,7 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
    (1) Identify & sort chromosomes
    (2) Generate bins
    (3) Group cutsites (intersect)
+   (·) Normalize over last condition.
    (4) Assign grouped reads to bins (intersect)
    (5) Calculate bin statistics
    (6) Combine condition into a single table
