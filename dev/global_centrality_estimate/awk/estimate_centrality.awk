@@ -9,19 +9,18 @@
 
 BEGIN {
 	OFS = FS = "\t";
-
 }
 
 function estimate(calc, a, b) {
-	# Return NA if either factors are NA
-	if ( "NA" == a || "NA" == b ) {
-		return "NA";
+	# Return nan if either factors are nan
+	if ( "nan" == a || "nan" == b ) {
+		return "nan";
 	} else {
 		switch (calc) {
 			case "ratio": {
 				# Do not allow division by 0
 				if ( 0 == b ) {
-					return "NA";
+					return "nan";
 				} else {
 					return a / b;
 				}
@@ -33,8 +32,8 @@ function estimate(calc, a, b) {
 			}
 			case "logratio": {
 				# Do not allow division by 0 or log(0)
-				if ( 0 <= b || 0 <= a ) {
-					return "NA";
+				if ( 0 >= b || 0 >= a ) {
+					return "nan";
 				} else {
 					return log(a / b);
 				}
@@ -46,7 +45,7 @@ function estimate(calc, a, b) {
 
 {
 	# Cumulative ratio
-	if ( 1 == cumrat) {
+	if ( 1 == cumrat) { 
 		# Sum probabilities
 		for ( i = 2; i <= NF; i++ ) {
 			$i = $i + $(i-1);
@@ -66,8 +65,8 @@ function estimate(calc, a, b) {
 		for ( i = 1; i <= NF; i++ ) {
 			a[i, 2] += a[i - 1, 2];
 			a[i, 1] += a[i - 1, 1];
-			if ( 0 == a[i, 2] || 0 == a[i, 3] || "NA" == $(i - 1)) {
-				$i = "NA";
+			if ( 0 == a[i, 2] || 0 == a[i, 3] || "nan" == $(i - 1)) {
+				$i = "nan";
 			} else {
 				$i = a[i, 2] / (a[i, 1] * a[i, 3]);
 			}
@@ -80,18 +79,18 @@ function estimate(calc, a, b) {
 			print estimate(calc, $NF, $1);
 			break;
 		case "f":
-			if ( "NA" == $1 ) {
-				print "NA";
+			if ( "nan" == $1 ) {
+				print "nan";
 				break;
 			}
 
 			output = 0;
 			for ( i = 2; i <= NF; i++ ) {
 				new_value = estimate(calc, $i, $1);
-				if ( "NA" == new_value ) {
+				if ( "nan" == new_value ) {
 					output = new_value;
 				}
-				if ( "NA" == output ) {
+				if ( "nan" == output ) {
 					break;
 				} else {
 					output = output + new_value;
@@ -103,10 +102,10 @@ function estimate(calc, a, b) {
 			output = 0;
 			for ( i = 2; i <= NF; i++ ) {
 				new_value = estimate(calc, $i, $(i-1));
-				if ( "NA" == new_value ) {
+				if ( "nan" == new_value ) {
 					output = new_value;
 				}
-				if ( "NA" == output ) {
+				if ( "nan" == output ) {
 					break;
 				} else {
 					output = output + new_value;

@@ -12,7 +12,7 @@ BEGIN {
 	switch(type) {
 		case "p": {
 			if ( 0 == $1 || 0 == $3 ) {
-				print "NA";
+				print "nan";
 			} else {
 				print $2 / ($1 * $3);
 			}
@@ -20,7 +20,7 @@ BEGIN {
 		}
 		case "ff": {
 			if ( 0 == $1 ) {
-				print "NA";
+				print "nan";
 			} else {
 				print $2 ** 2 / $1;
 			}
@@ -28,7 +28,7 @@ BEGIN {
 		}
 		case "cv": {
 			if ( 0 == $1 ) {
-				print "NA";
+				print "nan";
 			} else {
 				print $2 / $1;
 			}
