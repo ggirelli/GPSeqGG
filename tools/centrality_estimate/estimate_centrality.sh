@@ -380,8 +380,8 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 
     echo -e " > Assigning reads from $infile ..."
     bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
-         -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 \
-        sed 's/-1/$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
+        -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
+        sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
         > "$outdir/$outfile" & pid=$!
 
     # Remove nzl file
@@ -406,7 +406,7 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 
     # Calculate statistics
     echo -e " > Calculating for $infile ..."
-    cat "${bedfiles[$bfi]}" | datamash -sg1,2,3 sum 4 mean 4 sstdev 4 count 4 \
+    cat "${bedfiles[$bfi]}" | datamash -sg1,2,3 sum 5 mean 5 sstdev 5 count 5 \
         | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2- \
         > "$outdir/$outfile" & pid=$!
 
@@ -445,6 +445,7 @@ if [ -z "$tmp" ]; then comb=$(echo -e "$comb" | sed 1d); fi
 
 # Discard bins with no cutsites/reads from the analysis
 #comb=$(echo -e "$comb" | gawk '0 != $8 && 0 != $5')
+
 
 # 7) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
