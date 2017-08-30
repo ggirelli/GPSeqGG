@@ -468,9 +468,6 @@ comb=$(echo -e "$comb" | gawk -f "$awkdir/add_chr_id.awk" | \
 tmp=$(echo -e "$comb" | head -n1)
 if [ -z "$tmp" ]; then comb=$(echo -e "$comb" | sed 1d); fi
 
-# Discard bins with no cutsites/reads from the analysis
-#comb=$(echo -e "$comb" | gawk '0 != $8 && 0 != $5')
-
 
 # 9) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
@@ -531,8 +528,6 @@ var_two_points=$(echo -e "$var_mat" | \
     gawk -v calc="logratio" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 var_fixed=$(echo -e "$var_mat" | \
     gawk -v calc="logratio" -v type="f" -f "$awkdir/estimate_centrality.awk")
-#var_global=$(echo -e "$var_mat" | \
-#   gawk -v calc="logratio" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Fano factor metric
 echo -e " > Fano factor ..."
@@ -542,8 +537,6 @@ ff_two_points=$(echo -e "$ff_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 ff_fixed=$(echo -e "$ff_mat" | \
     gawk -v calc="diff" -v type="f" -f "$awkdir/estimate_centrality.awk")
-#ff_global=$(echo -e "$ff_mat" | \
-#   gawk -v calc="diff" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 # Coefficient of variation metric
 echo -e " > Coefficient of variation ..."
@@ -553,8 +546,6 @@ cv_two_points=$(echo -e "$cv_mat" | \
     gawk -v calc="diff" -v type="2p" -f "$awkdir/estimate_centrality.awk")
 cv_fixed=$(echo -e "$cv_mat" | \
     gawk -v calc="diff" -v type="f" -f "$awkdir/estimate_centrality.awk")
-#cv_global=$(echo -e "$cv_mat" | \
-#   gawk -v calc="diff" -v type="g" -f "$awkdir/estimate_centrality.awk")
 
 #----------#
 # Assemble #
