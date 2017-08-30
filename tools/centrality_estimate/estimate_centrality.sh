@@ -341,10 +341,11 @@ fi
 # Remove zero-loci
 echo -e " Removing cutsites/groups with zero reads ..."
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
     if [ 0 -ne $groupSize ]; then
-        outfile=$(echo -e "${bedfiles[$bfi]}" | sed "s/grouped/nzl/")
+        outfile="$outdir/"$(echo -e "$infile" | sed "s/grouped/nzl/")
     else
-        outfile="$outdir/"$out_prefix"nzl.${bedfiles[$bfi]}"
+        outfile="$outdir/"$out_prefix"nzl.$infile"
     fi
 
     # Remove zero-loci or empty groups
@@ -423,15 +424,14 @@ echo -e " Combining information ..."
 # combalize read count by cutsite and condition
 comb=""
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-
     # Combine
-    cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 5)
-    comb="$comb"$(cat "$infile" | gawk -v cnr=$cond_n_reads -v bfi=$bfi \
-        -f "$awkdir/add_cnr_bfi.awk")"\n" & pid=$!
+    cond_n_reads=$(cat "${bedfiles[$bfi]}" | grep -v "track" | datamash sum 4)
+    tmp=$(cat "${bedfiles[$bfi]}" | \
+        gawk -v cnr=$cond_n_reads -v bfi=$bfi -f "$awkdir/add_cnr_bfi.awk")
+    comb="$comb$tmp\n"
 
     # Remove bin_stats
-    wait $pid; if [ false == $debugging ]; then rm "$outdir/$infile"; fi
+    wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
 done
 # Columns of $comb:
 # 1   2     3   4        5       6      7         8   9
@@ -439,13 +439,9 @@ done
 comb=$(echo -e "$comb" | gawk -f "$awkdir/add_chr_id.awk" | \
     sort -k1,1n -k3,3n -k10,10n  | cut -f2- | sed 1d )
 
-# Discard bins with no cutsites from the analysis
-#comb=$(echo -e "$comb" | gawk '0 != $8')
-
-# Remove grouped bed files
-if [ $groupSize -ne 0 -a false == $debugging ]; then
-    for bf in ${bedfiles[@]}; do rm $bf; done
-fi
+# Discard bins with no cutsites/reads from the analysis
+comb=$(echo -e "$comb" | gawk '0 != $8')
+comb=$(echo -e "$comb" | gawk '0 != $5')
 
 # 7) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
