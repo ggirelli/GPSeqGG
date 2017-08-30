@@ -319,16 +319,16 @@ if [ 0 -ne $groupSize ]; then
 
     # Group every bed file
     for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-        fname=$(echo -e "${bedfiles[$bfi]}" | \
+        infile=$(echo -e "${bedfiles[$bfi]}" | \
             tr "/" "\t" | gawk '{ print $NF }')
 
         bedtools intersect -a "$outdir/"$out_prefix"groups.$prefix.bed" \
             -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
             sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
-            > "$outdir/"$out_prefix"grouped.$prefix.$fname.tsv" & pid=$!
+            > "$outdir/"$out_prefix"grouped.$prefix.$infile$suffix.tsv" & pid=$!
 
         # Point to group bed file instead of original one
-        bedfiles[$bfi]="$outdir/"$out_prefix"grouped.$prefix.$fname.tsv"
+        bedfiles[$bfi]="$outdir/"$out_prefix"grouped.$prefix.$infile$suffix.tsv"
     done
 
     wait $pid; if [ false == $debugging ]; then
@@ -345,7 +345,7 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     if [ 0 -ne $groupSize ]; then
         outfile=$(echo -e "$infile" | sed "s/grouped/nzl/")
     else
-        outfile=$out_prefix"nzl.$infile"
+        outfile=$out_prefix"nzl.$prefix$infile$suffix.tsv"
     fi
 
     # Remove zero-loci or empty groups
