@@ -380,7 +380,8 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 
     echo -e " > Assigning reads from $infile ..."
     bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
-         -b "${bedfiles[$bfi]}" -wa -wb | cut -f 1-3,8 \
+         -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 \
+        sed 's/-1/$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
         > "$outdir/$outfile" & pid=$!
 
     # Remove nzl file
@@ -394,7 +395,6 @@ done
 if [ false == $debugging ]; then
     rm "$outdir/"$out_prefix"$prefix.bed"
 fi
-
 
 # 5) Calculate bin statistics --------------------------------------------------
 echo -e " Calculating bin statistics ..."
@@ -444,7 +444,7 @@ tmp=$(echo -e "$comb" | head -n1)
 if [ -z "$tmp" ]; then comb=$(echo -e "$comb" | sed 1d); fi
 
 # Discard bins with no cutsites/reads from the analysis
-comb=$(echo -e "$comb" | gawk '0 != $8 && 0 != $5')
+#comb=$(echo -e "$comb" | gawk '0 != $8 && 0 != $5')
 
 # 7) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
