@@ -30,13 +30,14 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
    (1) Identify & sort chromosomes
    (2) Generate bins
    (3) Group cutsites (intersect)
-   (·) Normalize over last condition.
-   (4) Assign grouped reads to bins (intersect)
-   (5) Calculate bin statistics
-   (6) Combine condition into a single table
-   (7) Estimate centrality
-   (8) Rank bins
-   (9) Write output
+   (4) Remove empty cutsites/groups
+   (5) Normalize over last condition.
+   (6) Assign grouped reads to bins (intersect)
+   (7) Calculate bin statistics
+   (8) Combine condition into a single table
+   (9) Estimate centrality
+   (10) Rank bins
+   (11) Write output
  
  Requirements:
   - bedtools for bin assignment
@@ -243,7 +244,7 @@ if [ -n "$suffix" ]; then
 fi
 
 if $normlast; then
-    settings="$settings\n\n Normalizing with last condition."
+    settings="$settings\n\n Normalizing over last condition."
 fi
 
 if $debugging; then
@@ -336,20 +337,19 @@ if [ 0 -ne $groupSize ]; then
 fi
 
 
-# ·) Normalize over last conditon ----------------------------------------------
-
-# Remove zero-loci
+# 4) Remove empty reads/groups -------------------------------------------------
 echo -e " Removing cutsites/groups with zero reads ..."
+
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
     if [ 0 -ne $groupSize ]; then
-        outfile="$outdir/"$(echo -e "$infile" | sed "s/grouped/nzl/")
+        outfile=$(echo -e "$infile" | sed "s/grouped/nzl/")
     else
-        outfile="$outdir/"$out_prefix"nzl.$infile"
+        outfile=$out_prefix"nzl.$infile"
     fi
 
     # Remove zero-loci or empty groups
-    cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outfile" & pid=$!
+    cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outdir/$outfile" & pid=$!
 
     # Remove grouped bed file
     wait $pid
@@ -358,25 +358,49 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fi
 
     # Point to non-zero-loci bed file instead of original one
-    bedfiles[$bfi]="$outfile"
+    bedfiles[$bfi]="$outdir/$outfile"
 done
+
+
+# 5) Normalize over last conditon ----------------------------------------------
 
 if $normlast; then
     echo -e " Normalizing over last condition ..."
 
-    # Intersect and keep only regions present in last condition
-    
-    # Normalize and convert to bed
+    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 2")); do
+        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
+            gawk '{ print $NF }')
+        outfile=$(echo -e "$infile" | sed 's/nzl/normlast/')
+
+        # Intersect and keep only regions present in last condition
+        echo -e " > Normalizing $infile ..."
+        bedtools intersect -a "${bedfiles[-1]}" -b "${bedfiles[$bfi]}" -wb | \
+            awk 'BEGIN{ OFS = FS = "\t"; } { $10 = $10 / $5; print $0; }' | \
+            cut -f6- > "$outdir/$outfile" & pid=$!
+
+        # Remove grouped bed file
+        wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
+
+        # Point to non-zero-loci bed file instead of original one
+        bedfiles[$bfi]="$outdir/$outfile"
+    done
 fi
+# Remove last condition
+if [ false == $debugging ]; then rm "${bedfiles[-1]}"; fi
+unset 'bedfiles[-1]'
 
 
-# 4) Intersect with bedtools ---------------------------------------------------
+# 6) Intersect with bedtools ---------------------------------------------------
 echo -e " Assigning to bins ..."
 
 # Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    outfile=$(echo -e "$infile" | sed 's/nzl/intersected/')
+    if $normlast; then
+        outfile=$(echo -e "$infile" | sed 's/normlast/intersected/')
+    else
+        outfile=$(echo -e "$infile" | sed 's/nzl/intersected/')
+    fi
 
     echo -e " > Assigning reads from $infile ..."
     bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
@@ -396,7 +420,8 @@ if [ false == $debugging ]; then
     rm "$outdir/"$out_prefix"$prefix.bed"
 fi
 
-# 5) Calculate bin statistics --------------------------------------------------
+
+# 7) Calculate bin statistics --------------------------------------------------
 echo -e " Calculating bin statistics ..."
 
 # Stats of beds
@@ -418,7 +443,7 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
 done
 
 
-# 6) Assemble into bin data table ----------------------------------------------
+# 8) Assemble into bin data table ----------------------------------------------
 echo -e " Combining information ..."
 
 # combalize read count by cutsite and condition
@@ -447,7 +472,7 @@ if [ -z "$tmp" ]; then comb=$(echo -e "$comb" | sed 1d); fi
 #comb=$(echo -e "$comb" | gawk '0 != $8 && 0 != $5')
 
 
-# 7) Estimate centrality -------------------------------------------------------
+# 9) Estimate centrality -------------------------------------------------------
 echo -e " Estimating centrality ..."
 
 # Prepare paste string
@@ -554,7 +579,7 @@ metrics=$(echo -e "$comb" | cut -f1-3 | uniq | paste -d$'\t' - \
     <(echo -e "$cv_fixed") \
     )
 
-# 8) Rank bins -----------------------------------------------------------------
+# 10) Rank bins -----------------------------------------------------------------
 echo -e " Ranking bins ..."
 
 ranked=""
@@ -579,7 +604,7 @@ for mi in $(seq 4 $n_metrics); do
 done
 
 
-# 9) Output --------------------------------------------------------------------
+# 11) Output --------------------------------------------------------------------
 echo -e " Writing output ..."
 
 #------------#
