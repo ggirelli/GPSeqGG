@@ -45,14 +45,20 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
   - gawk for text manipulation.
 
  Notes:
-  (A) Statistics (mean, variance) metrics take into account only cutsites sensed
-      in that condition. The script ignores 'zero' loci (with no reads). This is
-      true for both probability- and variability-based metrics.
-  (B) Depending on the sequencing resolution, it might not be feasible to go for
-      single-cutsite resolution. Thus, cutsite can be grouped for the statistics
-      calculation using the -g option.
-  (C) In case of non chromosome-wide bins, the ranking is done in an ordered
-      chromosome-wise manner.
+  Statistics (mean, variance) metrics take into account only cutsites sensed
+  in that condition. The script ignores 'zero' loci (with no reads). This is
+  true for both probability- and variability-based metrics.
+
+  Depending on the sequencing resolution, it might not be feasible to go for
+  single-cutsite resolution. Thus, cutsite can be grouped for the statistics
+  calculation using the -g option.
+
+  In case of sub-chromosome bins, the ranking is done in an ordered
+  chromosome-wise manner.
+
+  Empty custites/groups are removed before bin assignment, while empty bins are
+  kept. Also, normalization is performed after empty bin removal but before bin
+  assignment, i.e., either on the grouped or single cutsites.
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -569,6 +575,7 @@ metrics=$(echo -e "$comb" | cut -f1-3 | uniq | paste -d$'\t' - \
     <(echo -e "$cv_two_points") \
     <(echo -e "$cv_fixed") \
     )
+
 
 # 10) Rank bins -----------------------------------------------------------------
 echo -e " Ranking bins ..."
