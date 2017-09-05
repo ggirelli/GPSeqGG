@@ -22,8 +22,9 @@ export LC_ALL=C
 
 # Help string
 helps="
-usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
-                                [-r prefix][-u suffix] -o outdir [BEDFILE]...
+usage: ./estimate_centrality.sh [-h][-d][-n][-s binSize][-p binStep]
+                                [-g groupSize][-r prefix][-u suffix]
+                                -o outdir [BEDFILE]...
 
  Description:
   Estimate global centrality. The script performs the following steps:
@@ -32,7 +33,7 @@ usage: ./estimate_centrality.sh [-h][-d][-s binSize][-p binStep][-g groupSize]
    (3) Group cutsites (intersect)
    (4) Remove empty cutsites/groups
    (5) Normalize over last condition.
-   (6) Assign grouped reads to bins (intersect)
+   (6) Assign reads to bins (intersect)
    (7) Calculate bin statistics
    (8) Combine condition into a single table
    (9) Estimate centrality
@@ -643,7 +644,7 @@ fi
 
 # Write
 echo -e "$comb" > "$outdir/"$out_prefix"combined.$prefix$suffix.tsv"
-echo -e "$metrics" > "$outdir/"$out_prefix"estimates.$prefix$suffix.tsv"
+echo -e "$metrics" > "$outdir/"$out_prefix"estimated.$prefix$suffix.tsv"
 echo -e "$ranked" > "$outdir/"$out_prefix"ranked.$prefix$suffix.tsv"
 
 # END ==========================================================================
