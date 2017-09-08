@@ -288,7 +288,7 @@ csModeLabel+=("2:Union")
 csModeLabel+=("3:Separate+Empty")
 csModeLabel+=("4:Intersection")
 settings="$settings
-     Domain : ${csModeLabel[$csMode-2]}"
+     Domain : ${csModeLabel[$csMode-1]}"
 if [ 1 -eq $csMode ]; then
     settings="$settings
    Cutsites : $csList"
@@ -319,7 +319,18 @@ settings="$settings
    $(echo ${bedfiles[@]} | sed 's/ /\n   /g')"
 
 echo -e "$settings\n"
-echo -e "$settings\n" > "$outdir/settings.txt"
+
+# Set description
+if $chrWide; then
+    descr=$descr"bins.chrWide"
+else
+    descr=$descr"bins.size$binSize.step$binStep"
+fi
+if [ 0 -ne $groupSize ]; then
+    descr="$descr.group$groupSize"
+fi
+descr="$descr.csm$csMode"
+echo -e "$settings\n" > "$outdir/settings.$descr.txt"
 
 # Constants
 awkdir="`dirname ${BASH_SOURCE}`/awk/"
@@ -340,25 +351,15 @@ echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
 # 2) Generate bins and groups --------------------------------------------------
 echo -e " Generating bins ..."
 
-# Set bin description
-if $chrWide; then
-    binDescr=$binDescr"bins.chrWide"
-else
-    binDescr=$binDescr"bins.size$binSize.step$binStep"
-fi
-if [ 0 -ne $groupSize ]; then
-    binDescr="$binDescr.group$groupSize"
-fi
-
 # Generate bins
 if $chrWide; then
     cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk '{ print $1 "\t" 0 "\t" $2 }' \
-        > "$outdir/"$prefix"$binDescr.bed" & pid=$!
+        > "$outdir/"$prefix"$descr.bed" & pid=$!
 else
     cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
-        > "$outdir/"$prefix"$binDescr.bed" & pid=$!
+        > "$outdir/"$prefix"$descr.bed" & pid=$!
 fi
 
 # Generate groups
@@ -366,7 +367,7 @@ if [ 0 -ne $groupSize ]; then
     echo -e " Generating groups ..."
     cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk -v size=$groupSize -v step=$groupSize -f "$awkdir/mk_bins.awk" \
-        > "$outdir/"$prefix"groups.$binDescr.bed" & pid=$!
+        > "$outdir/"$prefix"groups.$descr.bed" & pid=$!
 fi
 
 # Clean
@@ -387,19 +388,15 @@ if [ 0 -ne $groupSize ]; then
         infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{print $NF}')
 
         # Intersect with -loj to keep empty groups
-        bedtools intersect -a "$outdir/"$prefix"groups.$binDescr.bed" \
+        bedtools intersect -a "$outdir/"$prefix"groups.$descr.bed" \
             -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
             sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
-            > "$outdir/"$prefix"grouped.$binDescr.$infile$suffix.tsv" & pid=$!
+            > "$outdir/"$prefix"grouped.$descr.$infile$suffix.tsv" & pid=$!
+        wait $pid
 
         # Point to group bed file instead of original one
-        bedfiles[$bfi]="$outdir/"$prefix"grouped.$binDescr.$infile$suffix.tsv"
+        bedfiles[$bfi]="$outdir/"$prefix"grouped.$descr.$infile$suffix.tsv"
     done
-
-    # Clean
-    wait $pid; if [ false == $debugging ]; then
-        rm "$outdir/"$prefix"groups.$binDescr.bed";
-    fi
 fi
 
 
@@ -411,19 +408,14 @@ infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
 if [ 0 -ne $groupSize ]; then
     outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
 else
-    outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
+    outfile=$prefix"csd.$descr$infile$suffix.tsv"
 fi
 
 commonDomain=true
 case $csMode in
     1) # Universe
-        # Group cutsites
-        echo -e " > Grouping cutsites ..."
-        if [ 0 -ne $groupSize ]; then
-            csbed=$(bedtools intersect -a "$csList" -b "${bedfiles[$bfi]}" \
-                -wa -wb -loj | cut -f 1-3,8 | sed 's/-1$/0/' | \
-                gawk -v prefix="row_" -f "$awkdir/add_name.awk")
-        fi
+        # Read cutsites
+        csbed=$(cat "$csList" | grep -v "track")
     ;;
     2) # Union
         echo -e " > Merging cutsite domains ..."
@@ -432,33 +424,8 @@ case $csMode in
         csbed=$(cat ${bedfiles[@]} | grep -v "track" | cut -f 3 | sort | uniq |\
             gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | cut -f2-)
     ;;
-    3) # Separate
-        echo -e " > Removing cutsites/groups with zero reads ..."
-        commonDomain=false
-
-        # Remove empty sites
-        for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-            # Input/output path
-            infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
-                gawk '{ print $NF }')
-            if [ 0 -ne $groupSize ]; then
-                outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
-            else
-                outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
-            fi
-
-            # Remove zero-loci or empty groups
-            cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outdir/$outfile" \
-                & pid=$!; wait $pid
-
-            # Remove grouped bed file
-            if [ 0 -ne $groupSize -a false == $debugging ]; then
-                rm "${bedfiles[$bfi]}"
-            fi
-
-            # Point to non-zero-loci bed file instead of original one
-            bedfiles[$bfi]="$outdir/$outfile"
-        done
+    3) # Separated
+        # Silence is golden
     ;;
     4) # Intersection
         echo -e " > Intersecting cutsite domains ..."
@@ -475,31 +442,61 @@ case $csMode in
     ;;
 esac
 
-if $commonDomain; then
-    echo -e " > Matching reads on domain ..."
+echo -e " > Counting cutsites ..."
+if [ -n "$csbed" ]; then
+    # Group cutsites
+    if [ 0 -ne $groupSize ]; then
+        bedtools intersect \
+            -a "$outdir/"$prefix"groups.$descr.bed" \
+            -b <(echo -e "$csbed") -wa -c -loj | \
+            cut -f 1-3 | sed 's/-1$/0/' | \
+            gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
+            > "$outdir/$prefix.cutsite.$descr.suffix.bed" & pid=$!
+        wait $pid;
+    else
+        echo -e "$csbed" > "$outdir/$prefix.cutsite.$descr.suffix.bed"
+    fi
+fi
 
-    # LOJ bed files on cutsite domain
-    echo -e "$csbed" > "$outdir/csbed.$binDescr.bed"
-    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-        # Input/output path
-        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
-            gawk '{ print $NF }')
-        if [ 0 -ne $groupSize ]; then
-            outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
-        else
-            outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
-        fi
+for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+    # Input/output path
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
+        gawk '{ print $NF }')
+    if [ 0 -ne $groupSize ]; then
+        outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+    else
+        outfile=$prefix"csd.$descr$infile$suffix.tsv"
+    fi
 
-        cp "$outdir/$infile" "$outdir/$outfile" & pid=$!; wait $pid
+    if [ -n "$csbed" ]; then
+        # Rename current file
+        cp "$outdir/$infile" "$outdir/$outfile"
+    else
+        # Remove zero-loci or empty groups
+        cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outdir/$outfile" & pid=$!
+        wait $pid
 
-        # Remove grouped bed file
-        if [ 0 -ne $groupSize -a false == $debugging ]; then
-            rm "$outdir/$infile"
-        fi
+        bedtools intersect \
+            -a "$outdir/"$prefix"groups.$descr.bed" \
+            -b <(cat "$outdir/$outfile" | cut -f1-3) \
+            -wa -c -loj | cut -f 1-3 | sed 's/-1$/0/' | \
+            gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
+            > "$outdir/$prefix.cutsite.$descr.suffix.bed" & pid=$!
+        wait $pid;
+    fi
 
-        # Point to non-zero-loci bed file instead of original one
-        bedfiles[$bfi]="$outdir/$outfile"
-    done
+    # Remove grouped bed file
+    if [ 0 -ne $groupSize -a false == $debugging ]; then
+        rm "$outdir/$infile"
+    fi
+
+    # Point to non-zero-loci bed file instead of original one
+    bedfiles[$bfi]="$outdir/$outfile"
+done
+
+# Clean
+if [ false == $debugging ]; then
+    rm "$outdir/"$prefix"groups.$descr.bed"
 fi
 
 
@@ -536,6 +533,7 @@ echo -e " Assigning to bins ..."
 
 # Assign bed reads to bins
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+    # Input/output path
     infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
     if $normlast; then
         outfile=$(echo -e "$infile" | sed 's/normlast/intersected/')
@@ -544,7 +542,7 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     fi
 
     echo -e " > Assigning reads from $infile ..."
-    bedtools intersect -a "$outdir/"$prefix"$binDescr.bed" \
+    bedtools intersect -a "$outdir/"$prefix"$descr.bed" \
         -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
         sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
         > "$outdir/$outfile" & pid=$!
@@ -558,7 +556,7 @@ done
 
 # Remove bin bed
 if [ false == $debugging ]; then
-    rm "$outdir/"$prefix"$binDescr.bed"
+    rm "$outdir/"$prefix"$descr.bed"
 fi
 
 
@@ -567,6 +565,7 @@ echo -e " Calculating bin statistics ..."
 
 # Stats of beds
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+    # Input/output path
     infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
     outfile=$(echo -e "$infile" | sed 's/intersected/bin_stats/')
 
@@ -777,9 +776,9 @@ if $chrWide; then
 fi
 
 # Write
-echo -e "$comb" > "$outdir/"$prefix"combined.$binDescr$suffix.tsv"
-echo -e "$metrics" > "$outdir/"$prefix"estimated.$binDescr$suffix.tsv"
-echo -e "$ranked" > "$outdir/"$prefix"ranked.$binDescr$suffix.tsv"
+echo -e "$comb" > "$outdir/"$prefix"combined.$descr$suffix.tsv"
+echo -e "$metrics" > "$outdir/"$prefix"estimated.$descr$suffix.tsv"
+echo -e "$ranked" > "$outdir/"$prefix"ranked.$descr$suffix.tsv"
 
 # END ==========================================================================
 
