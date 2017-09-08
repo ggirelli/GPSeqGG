@@ -22,8 +22,10 @@ export LC_ALL=C
 
 # Help string
 helps="
-usage: ./estimate_centrality.sh [-h][-d][-n][-s binSize][-p binStep]
-                                [-g groupSize][-r prefix][-u suffix]
+usage: ./estimate_centrality.sh [-h][-d][-n]
+                                [-c csMode][-l csList]
+                                [-s binSize][-p binStep][-g groupSize]
+                                [-r prefix][-u suffix]
                                 -o outdir [BEDFILE]...
 
  Description:
@@ -46,20 +48,31 @@ usage: ./estimate_centrality.sh [-h][-d][-n][-s binSize][-p binStep]
   - gawk for text manipulation.
 
  Notes:
-  Statistics (mean, variance) metrics take into account only cutsites sensed
-  in that condition. The script ignores 'zero' loci (with no reads). This is
-  true for both probability- and variability-based metrics.
+  # Cutsite domain
+   The cutsite domain can be specified as follows:
+    1 - all genomic cutsites (universe)
+    2 - all cutsites restricted in the experiment (union)
+    3 - all cutsites restricted in a condition (separate)
+    4 - all cutsites restricted in all conditions (intersection)
+   Default is 3 (separate). Also, note that if option 1 is selected, an
+   additional argument -l is required.
+  
+   Statistics (mean, variance) metrics take into account only the cutsites
+   included in the specified cutsite domain. The same cutsite domain is used for
+   all estimates.
 
-  Depending on the sequencing resolution, it might not be feasible to go for
-  single-cutsite resolution. Thus, cutsite can be grouped for the statistics
-  calculation using the -g option.
+   Options 3 and 4 include an empty-cutsites/grups removal step. In this case,
+   they are removed before bin assignment, while empty bins are kept. Also,
+   normalization is performed after empty bin removal but before bin assignment,
+   i.e., either on the grouped or single cutsites.
 
-  In case of sub-chromosome bins, the ranking is done in an ordered
-  chromosome-wise manner.
-
-  Empty custites/groups are removed before bin assignment, while empty bins are
-  kept. Also, normalization is performed after empty bin removal but before bin
-  assignment, i.e., either on the grouped or single cutsites.
+  # Resolution
+   Depending on the sequencing resolution, it might not be feasible to go for
+   single-cutsite resolution. Thus, cutsite can be grouped for the statistics
+   calculation using the -g option.
+ 
+   In case of sub-chromosome bins, the ranking is done in an ordered
+   chromosome-wise manner.
 
  Mandatory arguments:
   -o outdir     Output folder.
@@ -72,6 +85,8 @@ usage: ./estimate_centrality.sh [-h][-d][-n][-s binSize][-p binStep]
   -h            Show this help page.
   -d            Debugging mode: save intermediate results.
   -n            Use last condition for normalization.
+  -c csMode     Custite mode (see Notes).
+  -l csList     Path to cutsite bed file. Required for -c 1.
   -s binSize    Bin size in bp. Default to chromosome-wide bins.
   -p binStep    Bin step in bp. Default to bin sizeinStep.
   -g groupSize  Group size in bp. Used to group bins for statistics calculation.
@@ -81,6 +96,7 @@ usage: ./estimate_centrality.sh [-h][-d][-n][-s binSize][-p binStep]
 "
 
 # Default values
+csMode=3
 binSize=0
 binStep=0
 groupSize=0
@@ -89,7 +105,7 @@ debugging=false
 normlast=false
 
 # Parse options
-while getopts hdns:p:g:o:r:u: opt; do
+while getopts hdnc:l:s:p:g:o:r:u: opt; do
     case $opt in
         h)
             # Help page
@@ -103,6 +119,27 @@ while getopts hdns:p:g:o:r:u: opt; do
         n)
             # Normalize with last condition
             normlast=true
+        ;;
+        c)
+            # Cutsite domain
+            if [ $OPTARG -le 0 -o $OPTARG -ge 5 ]; then
+                msg="!!! ERROR! Invalid -c option, valid values: 1-4."
+                echo -e "$help\n$msg"
+                exit 1
+            else
+                csMode=$OPTARG
+            fi
+        ;;
+        l)
+            # Cutsite bed file
+            if [ -e $OPTARG -a -n "$OPTARG" ]; then
+                csList="$OPTARG"
+            else
+                msg="!!!ERROR! Invalid -l option, file not found."
+                msg="$msg\n    File: $bf"
+                echo -e " $helps\n$msg"
+                exit 1
+            fi
         ;;
         s)
             # Bin size
@@ -144,10 +181,10 @@ while getopts hdns:p:g:o:r:u: opt; do
         ;;
         r)
             # Prefix
-            out_prefix=$OPTARG
+            prefix=$OPTARG
 
             # Add trailing dot
-            out_prefix=$(echo -e "$out_prefix" | sed -r 's/([^\.])$/\1\./' | \
+            prefix=$(echo -e "$prefix" | sed -r 's/([^\.])$/\1\./' | \
                 tr ' ' '_')
         ;;
         u)
@@ -202,6 +239,11 @@ if [ 0 -eq ${#bedfiles[@]} ]; then
 fi
 
 # Additional checks
+if [ 1 -eq $csMode -a -z "$csList" ]; then
+    msg="!!!ERROR! Missing -l option with -c 1."
+    echo -e " $helps\n$msg"
+    exit 1
+fi
 if [ ! $binStep -eq 0 -a $binSize -eq 0 ]; then
     echo -e "WARNING: missing bin size, ignoring -p option.\n"
 fi
@@ -240,9 +282,21 @@ if [ 0 -ne $groupSize ]; then
  Group size : $groupSize"
 fi
 
-if [ -n "$out_prefix" ]; then
+csModeLabel=()
+csModeLabel+=("1:Universe")
+csModeLabel+=("2:Union")
+csModeLabel+=("3:Separate+Empty")
+csModeLabel+=("4:Intersection")
+settings="$settings
+     Domain : ${csModeLabel[$csMode-2]}"
+if [ 1 -eq $csMode ]; then
     settings="$settings
-     Prefix : '$out_prefix'"
+   Cutsites : $csList"
+fi
+
+if [ -n "$prefix" ]; then
+    settings="$settings
+     Prefix : '$prefix'"
 fi
 
 if [ -n "$suffix" ]; then
@@ -265,6 +319,7 @@ settings="$settings
    $(echo ${bedfiles[@]} | sed 's/ /\n   /g')"
 
 echo -e "$settings\n"
+echo -e "$settings\n" > "$outdir/settings.txt"
 
 # Constants
 awkdir="`dirname ${BASH_SOURCE}`/awk/"
@@ -272,50 +327,52 @@ awkdir="`dirname ${BASH_SOURCE}`/awk/"
 # RUN ==========================================================================
 
 # 1) Identify chromosome sizes -------------------------------------------------
-
 echo -e " Retrieving chromosome sizes ..."
+
+# Retrieve chromosome sizes
 chrSize=$(cat ${bedfiles[@]} | grep -v 'track' | datamash -sg1 -t$'\t' max 3)
 
-# Sort chromosomes
+# Sort by chromosomes
 echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
-    cut -f2,3 > "$outdir/"$out_prefix"chr_size$suffix.tsv"
+    cut -f2,3 > "$outdir/"$prefix"chr_size$suffix.tsv"
 
 
-# 2) Generate bin bed file -----------------------------------------------------
+# 2) Generate bins and groups --------------------------------------------------
 echo -e " Generating bins ..."
 
-# Set output prefix
+# Set bin description
 if $chrWide; then
-    prefix=$prefix"bins.chrWide"
+    binDescr=$binDescr"bins.chrWide"
 else
-    prefix=$prefix"bins.size$binSize.step$binStep"
+    binDescr=$binDescr"bins.size$binSize.step$binStep"
 fi
 if [ 0 -ne $groupSize ]; then
-    prefix="$prefix.group$groupSize"
+    binDescr="$binDescr.group$groupSize"
 fi
 
 # Generate bins
 if $chrWide; then
-    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
+    cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk '{ print $1 "\t" 0 "\t" $2 }' \
-        > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
+        > "$outdir/"$prefix"$binDescr.bed" & pid=$!
 else
-    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
+    cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
-        > "$outdir/"$out_prefix"$prefix.bed" & pid=$!
+        > "$outdir/"$prefix"$binDescr.bed" & pid=$!
 fi
 
 # Generate groups
 if [ 0 -ne $groupSize ]; then
     echo -e " Generating groups ..."
-    cat "$outdir/"$out_prefix"chr_size$suffix.tsv" | \
+    cat "$outdir/"$prefix"chr_size$suffix.tsv" | \
         gawk -v size=$groupSize -v step=$groupSize -f "$awkdir/mk_bins.awk" \
-        > "$outdir/"$out_prefix"groups.$prefix.bed" & pid=$!
+        > "$outdir/"$prefix"groups.$binDescr.bed" & pid=$!
 fi
 
+# Clean
 wait $pid
 if [ false == $debugging ]; then
-    rm "$outdir/"$out_prefix"chr_size$suffix.tsv"
+    rm "$outdir/"$prefix"chr_size$suffix.tsv"
 fi
 
 
@@ -326,47 +383,124 @@ if [ 0 -ne $groupSize ]; then
 
     # Group every bed file
     for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-        infile=$(echo -e "${bedfiles[$bfi]}" | \
-            tr "/" "\t" | gawk '{ print $NF }')
+        # Set input path
+        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{print $NF}')
 
-        bedtools intersect -a "$outdir/"$out_prefix"groups.$prefix.bed" \
+        # Intersect with -loj to keep empty groups
+        bedtools intersect -a "$outdir/"$prefix"groups.$binDescr.bed" \
             -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
             sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
-            > "$outdir/"$out_prefix"grouped.$prefix.$infile$suffix.tsv" & pid=$!
+            > "$outdir/"$prefix"grouped.$binDescr.$infile$suffix.tsv" & pid=$!
 
         # Point to group bed file instead of original one
-        bedfiles[$bfi]="$outdir/"$out_prefix"grouped.$prefix.$infile$suffix.tsv"
+        bedfiles[$bfi]="$outdir/"$prefix"grouped.$binDescr.$infile$suffix.tsv"
     done
 
+    # Clean
     wait $pid; if [ false == $debugging ]; then
-        rm "$outdir/"$out_prefix"groups.$prefix.bed";
+        rm "$outdir/"$prefix"groups.$binDescr.bed";
     fi
 fi
 
 
-# 4) Remove empty reads/groups -------------------------------------------------
-echo -e " Removing cutsites/groups with zero reads ..."
+# 4) Prepare and apply cutsite domain ------------------------------------------
+echo -e " Preparing cutsites ..."
 
-for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    if [ 0 -ne $groupSize ]; then
-        outfile=$(echo -e "$infile" | sed "s/grouped/nzl/")
-    else
-        outfile=$out_prefix"nzl.$prefix$infile$suffix.tsv"
-    fi
+# Set input/output paths (csd : CutSite Domain)
+infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
+if [ 0 -ne $groupSize ]; then
+    outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+else
+    outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
+fi
 
-    # Remove zero-loci or empty groups
-    cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outdir/$outfile" & pid=$!
+commonDomain=true
+case $csMode in
+    1) # Universe
+        # Group cutsites
+        echo -e " > Grouping cutsites ..."
+        if [ 0 -ne $groupSize ]; then
+            csbed=$(bedtools intersect -a "$csList" -b "${bedfiles[$bfi]}" \
+                -wa -wb -loj | cut -f 1-3,8 | sed 's/-1$/0/' | \
+                gawk -v prefix="row_" -f "$awkdir/add_name.awk")
+        fi
+    ;;
+    2) # Union
+        echo -e " > Merging cutsite domains ..."
 
-    # Remove grouped bed file
-    wait $pid
-    if [ 0 -ne $groupSize -a false == $debugging ]; then
-        rm "${bedfiles[$bfi]}"
-    fi
+        # Identify cutsites from all conditions
+        csbed=$(cat ${bedfiles[@]} | grep -v "track" | cut -f 3 | sort | uniq |\
+            gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | cut -f2-)
+    ;;
+    3) # Separate
+        echo -e " > Removing cutsites/groups with zero reads ..."
+        commonDomain=false
 
-    # Point to non-zero-loci bed file instead of original one
-    bedfiles[$bfi]="$outdir/$outfile"
-done
+        # Remove empty sites
+        for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+            # Input/output path
+            infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
+                gawk '{ print $NF }')
+            if [ 0 -ne $groupSize ]; then
+                outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+            else
+                outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
+            fi
+
+            # Remove zero-loci or empty groups
+            cat "${bedfiles[$bfi]}" | gawk '0 != $5' > "$outdir/$outfile" \
+                & pid=$!; wait $pid
+
+            # Remove grouped bed file
+            if [ 0 -ne $groupSize -a false == $debugging ]; then
+                rm "${bedfiles[$bfi]}"
+            fi
+
+            # Point to non-zero-loci bed file instead of original one
+            bedfiles[$bfi]="$outdir/$outfile"
+        done
+    ;;
+    4) # Intersection
+        echo -e " > Intersecting cutsite domains ..."
+
+        # Intersect after removing empty sites/groups
+        csbed=$(cat ${bedfiles[@]} | grep -v "track" | gawk '0 != 5' | \
+            cut -f 1-3 | sort | uniq -d | gawk -f "$awkdir/add_chr_id.awk" | \
+            sort -k1,1n | cut -f2-)
+    ;;
+    ?)
+        msg="!!! ERROR! Unrecognized cutsite domain option: $csMode"
+        echo -e "$helps\n$msg"
+        exit 1
+    ;;
+esac
+
+if $commonDomain; then
+    echo -e " > Matching reads on domain ..."
+
+    # LOJ bed files on cutsite domain
+    echo -e "$csbed" > "$outdir/csbed.$binDescr.bed"
+    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
+        # Input/output path
+        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
+            gawk '{ print $NF }')
+        if [ 0 -ne $groupSize ]; then
+            outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+        else
+            outfile=$prefix"csd.$binDescr$infile$suffix.tsv"
+        fi
+
+        cp "$outdir/$infile" "$outdir/$outfile" & pid=$!; wait $pid
+
+        # Remove grouped bed file
+        if [ 0 -ne $groupSize -a false == $debugging ]; then
+            rm "$outdir/$infile"
+        fi
+
+        # Point to non-zero-loci bed file instead of original one
+        bedfiles[$bfi]="$outdir/$outfile"
+    done
+fi
 
 
 # 5) Normalize over last conditon ----------------------------------------------
@@ -377,7 +511,7 @@ if $normlast; then
     for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 2")); do
         infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
             gawk '{ print $NF }')
-        outfile=$(echo -e "$infile" | sed 's/nzl/normlast/')
+        outfile=$(echo -e "$infile" | sed 's/csd/normlast/')
 
         # Intersect and keep only regions present in last condition
         echo -e " > Normalizing $infile ..."
@@ -406,11 +540,11 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     if $normlast; then
         outfile=$(echo -e "$infile" | sed 's/normlast/intersected/')
     else
-        outfile=$(echo -e "$infile" | sed 's/nzl/intersected/')
+        outfile=$(echo -e "$infile" | sed 's/csd/intersected/')
     fi
 
     echo -e " > Assigning reads from $infile ..."
-    bedtools intersect -a "$outdir/"$out_prefix"$prefix.bed" \
+    bedtools intersect -a "$outdir/"$prefix"$binDescr.bed" \
         -b "${bedfiles[$bfi]}" -wa -wb -loj | cut -f 1-3,8 | \
         sed 's/-1$/0/' | gawk -v prefix="row_" -f "$awkdir/add_name.awk" \
         > "$outdir/$outfile" & pid=$!
@@ -424,7 +558,7 @@ done
 
 # Remove bin bed
 if [ false == $debugging ]; then
-    rm "$outdir/"$out_prefix"$prefix.bed"
+    rm "$outdir/"$prefix"$binDescr.bed"
 fi
 
 
@@ -643,9 +777,9 @@ if $chrWide; then
 fi
 
 # Write
-echo -e "$comb" > "$outdir/"$out_prefix"combined.$prefix$suffix.tsv"
-echo -e "$metrics" > "$outdir/"$out_prefix"estimated.$prefix$suffix.tsv"
-echo -e "$ranked" > "$outdir/"$out_prefix"ranked.$prefix$suffix.tsv"
+echo -e "$comb" > "$outdir/"$prefix"combined.$binDescr$suffix.tsv"
+echo -e "$metrics" > "$outdir/"$prefix"estimated.$binDescr$suffix.tsv"
+echo -e "$ranked" > "$outdir/"$prefix"ranked.$binDescr$suffix.tsv"
 
 # END ==========================================================================
 

@@ -22,7 +22,7 @@ helps="
  usage: ./files_prepare.sh [-h][-t threads] -o outDir -1 r1file [-2 r2file]
 
  Description:
-  Run FASTQC tool.
+  Prepare files for analysis.
 
  Mandatory arguments:
   -o outDir	Output folder, created if not found.
