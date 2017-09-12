@@ -33,8 +33,8 @@ usage: ./estimate_centrality.sh [-h][-d][-n]
    (1) Identify & sort chromosomes
    (2) Generate bins
    (3) Group cutsites (intersect)
-   (4) Remove empty cutsites/groups
-   (5) Normalize over last condition.
+   (4) Normalize over last condition.
+   (5) Prepare domain
    (6) Assign reads to bins (intersect)
    (7) Calculate bin statistics
    (8) Combine condition into a single table
@@ -86,7 +86,7 @@ usage: ./estimate_centrality.sh [-h][-d][-n]
   -d            Debugging mode: save intermediate results.
   -n            Use last condition for normalization.
   -c csMode     Custite mode (see Notes).
-  -l csList     Path to cutsite bed file. Required for -c 1.
+  -l csList     Path to cutsite bed file. Required for -c1 when -g is not used.
   -s binSize    Bin size in bp. Default to chromosome-wide bins.
   -p binStep    Bin step in bp. Default to bin sizeinStep.
   -g groupSize  Group size in bp. Used to group bins for statistics calculation.
@@ -239,8 +239,8 @@ if [ 0 -eq ${#bedfiles[@]} ]; then
 fi
 
 # Additional checks
-if [ 1 -eq $csMode -a -z "$csList" ]; then
-    msg="!!!ERROR! Missing -l option with -c 1."
+if [ 1 -eq $csMode -a -z "$csList" -a 0 -eq $groupSize ]; then
+    msg="!!!ERROR! Missing -l option with -c1 and -g."
     echo -e " $helps\n$msg"
     exit 1
 fi
@@ -348,7 +348,7 @@ echo -e "$chrSize" | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n | \
     cut -f2,3 > "$outdir/"$prefix"chr_size$suffix.tsv"
 
 
-# 2) Generate bins and groups --------------------------------------------------
+# 2) Generate bins -------------------------------------------------------------
 echo -e " Generating bins ..."
 
 # Generate bins
@@ -361,6 +361,9 @@ else
         gawk -v size=$binSize -v step=$binStep -f "$awkdir/mk_bins.awk" \
         > "$outdir/"$prefix"$descr.bed" & pid=$!
 fi
+
+
+# 3) Group reads ---------------------------------------------------------------
 
 # Generate groups
 if [ 0 -ne $groupSize ]; then
@@ -375,9 +378,6 @@ wait $pid
 if [ false == $debugging ]; then
     rm "$outdir/"$prefix"chr_size$suffix.tsv"
 fi
-
-
-# 3) Group reads ---------------------------------------------------------------
 
 if [ 0 -ne $groupSize ]; then
     echo -e " Grouping reads ..."
@@ -400,16 +400,41 @@ if [ 0 -ne $groupSize ]; then
 fi
 
 
-# 4) Prepare and apply cutsite domain ------------------------------------------
-echo -e " Preparing cutsites ..."
+# 4) Normalize over last conditon ----------------------------------------------
 
-# Set input/output paths (csd : CutSite Domain)
-infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-if [ 0 -ne $groupSize ]; then
-    outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
-else
-    outfile=$prefix"csd.$descr$infile$suffix.tsv"
+if $normlast; then
+    echo -e " Normalizing over last condition ..."
+
+    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 2")); do
+        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
+            gawk '{ print $NF }')
+        if [ 0 -ne $groupSize ]; then
+            outfile=$(echo -e "$infile" | sed "s/grouped/normlast/")
+        else
+            outfile=$prefix"normlast.$descr$infile$suffix.tsv"
+        fi
+
+        # Intersect and keep only regions present in last condition
+        echo -e " > Normalizing $infile ..."
+        bedtools intersect -a <(cat "${bedfiles[-1]}" | awk '0 != $5' ) \
+            -b "${bedfiles[$bfi]}" -wb | \
+            awk 'BEGIN{ OFS = FS = "\t"; } { $10 = $10 / $5; print $0; }' | \
+            cut -f6- > "$outdir/$outfile" & pid=$!
+
+        # Remove grouped bed file
+        wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
+
+        # Point to non-zero-loci bed file instead of original one
+        bedfiles[$bfi]="$outdir/$outfile"
+    done
 fi
+# Remove last condition
+if [ false == $debugging ]; then rm "${bedfiles[-1]}"; fi
+unset 'bedfiles[-1]'
+
+
+# 5) Prepare and apply cutsite domain ------------------------------------------
+echo -e " Preparing cutsites ..."
 
 commonDomain=true
 case $csMode in
@@ -459,13 +484,16 @@ if [ -n "$csbed" ]; then
 fi
 
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
-    # Input/output path
-    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
-        gawk '{ print $NF }')
-    if [ 0 -ne $groupSize ]; then
-        outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+    # Set input/output paths (csd : CutSite Domain)
+    infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
+    if [ false == $normlast ]; then
+        if [ 0 -ne $groupSize ]; then
+            outfile=$(echo -e "$infile" | sed "s/grouped/csd/")
+        else
+            outfile=$prefix"csd.$descr$infile$suffix.tsv"
+        fi
     else
-        outfile=$prefix"csd.$descr$infile$suffix.tsv"
+        outfile=$(echo -e "$infile" | sed "s/normlast/csd/")
     fi
 
     if [ -n "$csbed" ]; then
@@ -500,34 +528,6 @@ if [ false == $debugging ]; then
 fi
 
 
-# 5) Normalize over last conditon ----------------------------------------------
-
-if $normlast; then
-    echo -e " Normalizing over last condition ..."
-
-    for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 2")); do
-        infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | \
-            gawk '{ print $NF }')
-        outfile=$(echo -e "$infile" | sed 's/csd/normlast/')
-
-        # Intersect and keep only regions present in last condition
-        echo -e " > Normalizing $infile ..."
-        bedtools intersect -a "${bedfiles[-1]}" -b "${bedfiles[$bfi]}" -wb | \
-            awk 'BEGIN{ OFS = FS = "\t"; } { $10 = $10 / $5; print $0; }' | \
-            cut -f6- > "$outdir/$outfile" & pid=$!
-
-        # Remove grouped bed file
-        wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
-
-        # Point to non-zero-loci bed file instead of original one
-        bedfiles[$bfi]="$outdir/$outfile"
-    done
-fi
-# Remove last condition
-if [ false == $debugging ]; then rm "${bedfiles[-1]}"; fi
-unset 'bedfiles[-1]'
-
-
 # 6) Intersect with bedtools ---------------------------------------------------
 echo -e " Assigning to bins ..."
 
@@ -535,11 +535,7 @@ echo -e " Assigning to bins ..."
 for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
     # Input/output path
     infile=$(echo -e "${bedfiles[$bfi]}" | tr "/" "\t" | gawk '{ print $NF }')
-    if $normlast; then
-        outfile=$(echo -e "$infile" | sed 's/normlast/intersected/')
-    else
-        outfile=$(echo -e "$infile" | sed 's/csd/intersected/')
-    fi
+    outfile=$(echo -e "$infile" | sed 's/csd/intersected/')
 
     echo -e " > Assigning reads from $infile ..."
     bedtools intersect -a "$outdir/"$prefix"$descr.bed" \
