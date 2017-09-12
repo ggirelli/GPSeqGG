@@ -439,8 +439,15 @@ echo -e " Preparing cutsites ..."
 commonDomain=true
 case $csMode in
     1) # Universe
-        # Read cutsites
-        csbed=$(cat "$csList" | grep -v "track")
+        if [ 0 -eq $groupSize ]; then
+            echo -e " > Reading cutsite list ..."
+            # Read cutsite list
+            csbed=$(cat "$csList" | grep -v "track")
+        else
+            echo -e " > Reading group list ..."
+            # Use group list
+            csbed=$(cat "$outdir/"$prefix"groups.$descr.bed" | grep -v "track")
+        fi
     ;;
     2) # Union
         echo -e " > Merging cutsite domains ..."
@@ -571,14 +578,19 @@ for bfi in $(seq 0 $(bc <<< "${#bedfiles[@]} - 1")); do
         | gawk -f "$awkdir/add_chr_id.awk" | sort -k1,1n -k3,3n | cut -f2- \
         > "$outdir/$outfile" & pid=$!
 
+    # Replace (grouped-)cutsite counts
+    if [ -n "$csbed" ]; then
+
+    fi
+
     # Remove binned
-    wait $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
+    wa/it $pid; if [ false == $debugging ]; then rm "${bedfiles[$bfi]}"; fi
 
     # Point to stats bed file instead of original one
     bedfiles[$bfi]="$outdir/$outfile"
 done
 
-
+exit 1
 # 8) Assemble into bin data table ----------------------------------------------
 echo -e " Combining information ..."
 
