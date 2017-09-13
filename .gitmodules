@@ -4,3 +4,6 @@
 [submodule "lib/preseq"]
 	path = lib/preseq
 	url = git@github.com:/ggirelli/preseq
+[submodule "tools/centrality_estimate"]
+	path = tools/centrality_estimate
+	url = git@github.com:ggirelli/gpseq-centrality-estimate.git
