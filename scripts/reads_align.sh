@@ -163,13 +163,13 @@ else
 	exit 1
 fi
 
-# Generate BAM -----------------------------------------------------------------
-echo -e " · Generating and sorting BAM file ..."
-samtools sort -@ $threads -o $out_dir/"$condition".sorted.bam \
-	$out_dir/"$condition".sam
+# # Generate BAM -----------------------------------------------------------------
+# echo -e " · Generating and sorting BAM file ..."
+# samtools sort -@ $threads -o $out_dir/"$condition".sorted.bam \
+# 	$out_dir/"$condition".sam
 
-echo -e " · Indexing BAM file ..."
-samtools index $out_dir/"$condition".sorted.bam $out_dir/"$condition".sorted.bai
+# echo -e " · Indexing BAM file ..."
+# samtools index $out_dir/"$condition".sorted.bam $out_dir/"$condition".sorted.bai
 
 # END --------------------------------------------------------------------------
 
