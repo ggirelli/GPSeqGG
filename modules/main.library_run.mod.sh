@@ -106,17 +106,17 @@ function library_run() {
 	source $moddir/main.library_complexity.mod.sh
 	execute_step $dontask 'Library complexity estimation' library_complexity
 
-	# BIN ----------------------------------------------------------------------
+	# # BIN ----------------------------------------------------------------------
 
-	# Load binning module
-	source $moddir/main.binning.mod.sh
-	execute_step $dontask 'binning' bin_step
+	# # Load binning module
+	# source $moddir/main.binning.mod.sh
+	# execute_step $dontask 'binning' bin_step
 
-	# PLOT UMI -----------------------------------------------------------------
+	# # PLOT UMI -----------------------------------------------------------------
 
-	# Load plot module
-	source $moddir/main.plot.mod.sh
-	time execute_step $dontask 'UMI plot' plot_umi
+	# # Load plot module
+	# source $moddir/main.plot.mod.sh
+	# time execute_step $dontask 'UMI plot' plot_umi
 
 	# Clean --------------------------------------------------------------------
 
