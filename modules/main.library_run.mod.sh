@@ -53,6 +53,8 @@ function library_run() {
 
 	if [ 0 -eq $numb_of_files ]; then
 		echo -e "!!! ERROR! No R1/R2 files found for $expID.\n"
+		echo -e "           Remember, the fastq.gz file name should include the"
+		echo -e "           specified experiment ID."
 		exit 1
 	fi
 
