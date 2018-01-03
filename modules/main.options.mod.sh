@@ -141,7 +141,7 @@ while getopts hwxyi:o:t:g:a:d:q:p:u:r:j:k:z:b:c:l:m:s:n: opt; do
 			else
 				msg="Invalid -d option, file not found.\nFile: $OPTARG"
 				echo -e "$helps\n!!! ERROR! $msg"
-				exi 1
+				exit 1
 			fi
 		;;
 		# Mapping quality threshold
