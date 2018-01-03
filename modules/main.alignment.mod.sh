@@ -76,6 +76,11 @@ function alignment() {
 		# Add back the UMIs to the SAM file ------------------------------------
 		echo -e " · Adding linkers to SAM file ..."
 
+		# Extract SAM headers
+		cat "$cout/$condition/$condition.sam" | \
+			grep "^\@" > "$cout/$condition/$condition.linkers.sam"
+
+		# Add linker seq
 		awkprogram='@include "join";
 		FNR==NR{a[$1]=$0;next} ($1 in a) { OFS="\t";
 
@@ -91,7 +96,7 @@ function alignment() {
 			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
 			<(cat "$cout/$condition/$condition.sam" | \
 				grep -v "^\@" | tr -s ' ') \
-			> "$cout/$condition/$condition.linkers.sam"
+			>> "$cout/$condition/$condition.linkers.sam"
 
 		# Clean ----------------------------------------------------------------
 		
