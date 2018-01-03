@@ -90,7 +90,7 @@ function alignment() {
 		t2[10]=t1[2] "\t" t2[10];
 		t2[11]=t1[4] "\t" t2[11];
 
-		print $0 OFS "LINKS:Z:" t1[2] OFS "LINKQ:Z:" t1[4];
+		print $0 OFS "LS:Z:" t1[2] OFS "LQ:Z:" t1[4];
 		}'
 		awk "$awkprogram" \
 			<(cat "$cout/$condition/filtered.r1.linkers.oneline.fq") \
