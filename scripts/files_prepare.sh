@@ -132,6 +132,7 @@ fi
 
 # One-line FQ ------------------------------------------------------------------
 echo -e "Generate online fastq file..."
+mkdir -p $HOME/tmp
 
 # R1
 wait $pid2
