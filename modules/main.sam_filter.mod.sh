@@ -22,9 +22,9 @@ function filter_sam() {
 
 	# Update summary header
 	header=`head -n 1 $outcontrol/summary_pattern`
-	header="$header\tsecondary_aln\tchimeras\tunmapped\tr2\tmapq < $mapqthr\trmChr"
-	header="$header\tumis\tumis/prefix"
-	echo -e "$header" > $outcontrol/summary_sam_filter
+	header="$header\tsecondary_aln\tchimeras\tr2\tunmapped\tmapq<$mapqthr"
+	header="$header\trmChr\tumis\tumis/prefix"
+	echo -e "$header" > "$outcontrol/summary_sam_filter"
 
 	for condition in ${condv[@]}; do
 		echo -e "\nAnalyzing UMIs from condition '$condition'..."
@@ -50,14 +50,21 @@ function filter_sam() {
 			flags="-r $flags"
 		fi
 
+		# Filter SAM with samtools
+		time $scriptdir/sam_filter.sh -p1m -t $threads -q $mapqthr \
+			-i "$cout/$condition/$condition.linkers.sam" \
+			2> "$cout/$condition/$condition.sam_filter_notes.txt" & pid0=$!
+		wait $pid0
+
+		# Additional SAM filters
 		if [ -z "$cutsite" ]; then
-			# Filter SAM
-			time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
+			time $scriptdir/sam_manage.R \
+				"$cout/$condition/" "$expID" "$condition" \
 				-mt $mapqThr --no-cutsite -c $threads $flags & pid0=$!
 			wait $pid0
 		else
-			# Filter SAM
-			time $scriptdir/sam_filter.R $cout/$condition/ $expID $condition \
+			time $scriptdir/sam_manage.R \
+				"$cout/$condition/" "$expID" "$condition" \
 				-mt $mapqThr -cs $cutsite -c $threads $flags & pid0=$!
 			wait $pid0
 		fi
@@ -71,14 +78,14 @@ function filter_sam() {
 		# Chimeric reads
 		c2=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
 			grep 'chimeric reads' | head -n 1 | cut -d ' ' -f 1`
-		
-		# Unmapped reads	
-		c3=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'unmapped reads' | head -n 1 | cut -d ' ' -f 1`
 
 		# R2 reads	
-		c4=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+		c3=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
 			grep 'R2 reads' | head -n 1 | cut -d ' ' -f 1`
+
+		# Unmapped reads	
+		c4=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'unmapped reads' | head -n 1 | cut -d ' ' -f 1`
 
 		# MAPQ < thr reads	
 		c5=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
@@ -97,19 +104,19 @@ function filter_sam() {
 		new_fields="\t$c\t$c2\t$c3\t$c4\t$c5\t$c6\t$c7\t$p7"
 		grep "^$condition" "$outcontrol/summary_pattern" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
-			>> $outcontrol/summary_sam_filter
+			>> "$outcontrol/summary_sam_filter"
 
 
 		# Clean ----------------------------------------------------------------
 		
 		if [ 0 -lt $neatness ]; then
 			echo -e "\n~ Cleaning..."
-			rm -v $cout/$condition/$condition".sam"
+			rm -v "$cout/$condition/$condition.sam"
 		fi
 
 	done
 
-	cp $outcontrol/summary_sam_filter $out/summary
+	cp "$outcontrol/summary_sam_filter" "$out/summary"
 }
 
 ################################################################################
