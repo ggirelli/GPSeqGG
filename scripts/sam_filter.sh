@@ -162,6 +162,8 @@ if ( $keep_primary ); then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount secondary alignments."
 	acount=$tcount
+else
+	>&2 echo "0 secondary alignments."
 fi
 
 # Filter chimeras --------------------------------------------------------------
@@ -207,6 +209,8 @@ if ( $rm_chimeric ); then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount chimeric reads."
 	acount=$tcount
+else
+	>&2 echo "0 chimeric reads."
 fi
 
 # Convert to BAM ---------------------------------------------------------------
@@ -229,6 +233,8 @@ if ( $keep_r1 ); then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount R2 reads."
 	acount=$tcount
+else
+	>&2 echo "0 R2 reads."
 fi
 
 # Mapped reads -----------------------------------------------------------------
@@ -245,10 +251,12 @@ if ( $keep_mapped ); then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount unmapped reads."
 	acount=$tcount
+else
+	>&2 echo "0 unmapped reads."
 fi
 
 # MAPQ threshold ---------------------------------------------------------------
-if ( $keep_r1 ); then
+if (( $(bc <<< "$min_mapq > 0") )); then
 	echo " · Applying MAPQ threshold of $min_mapq..."
 	samtools view -q $min_mapq -h "$bpath" -@ $threads \
 		> "$outdir/$fname.tmp.bam"
@@ -261,6 +269,8 @@ if ( $keep_r1 ); then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount reads with MAPQ < $min_mapq."
 	acount=$tcount
+else
+	>&2 echo "0 reads with MAPQ < $min_mapq."
 fi
 
 # Convert back to sam ----------------------------------------------------------
@@ -295,6 +305,8 @@ if [ -n "$chrlist" ]; then
 	fcount=$(bc <<< "$acount - $tcount")
 	>&2 echo "$fcount reads from removed chromosomes."
 	acount=$tcount
+else
+	>&2 echo "0 reads from removed chromosomes."
 fi
 
 # Count number of reads after filtering ----------------------------------------
