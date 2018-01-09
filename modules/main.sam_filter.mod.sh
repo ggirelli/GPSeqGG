@@ -47,27 +47,17 @@ function filter_sam() {
 		fi
 		flags=`join_by , "${flags[@]}"`
 		if [ -n "$flags" ]; then
-			flags="-r $flags"
+			flags="-C $flags"
+		fi
+		if [ -n "$cutsite" ]; then
+			flags="$flags -l ${#cutsite}"
 		fi
 
-		# Filter SAM with samtools
-		time $scriptdir/sam_filter.sh -p1m -t $threads -q $mapqthr \
+		# Additional SAM filters
+		time $scriptdir/sam_filter.sh -p1cm -t $threads -q $mapqthr $flags \
 			-i "$cout/$condition/$condition.linkers.sam" \
 			2> "$cout/$condition/$condition.sam_filter_notes.txt" & pid0=$!
 		wait $pid0
-
-		# Additional SAM filters
-		if [ -z "$cutsite" ]; then
-			time $scriptdir/sam_manage.R \
-				"$cout/$condition/" "$expID" "$condition" \
-				-mt $mapqThr --no-cutsite -c $threads $flags & pid0=$!
-			wait $pid0
-		else
-			time $scriptdir/sam_manage.R \
-				"$cout/$condition/" "$expID" "$condition" \
-				-mt $mapqThr -cs $cutsite -c $threads $flags & pid0=$!
-			wait $pid0
-		fi
 
 		# Update summary -------------------------------------------------------
 
@@ -105,7 +95,6 @@ function filter_sam() {
 		grep "^$condition" "$outcontrol/summary_pattern" | \
 			awk -v nf="$new_fields" "{ print \$0 nf }" - \
 			>> "$outcontrol/summary_sam_filter"
-
 
 		# Clean ----------------------------------------------------------------
 		

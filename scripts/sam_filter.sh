@@ -118,9 +118,17 @@ if [ -z "$samfile" ]; then
 	exit 0
 fi
 
-# Check that samtools is installed
+# Check that some software is installed
 if [ ! -x "$(command -v samtools)" ]; then
 	echo -e "gpseq-seq-gg requires samtools to work."
+	exit 1
+fi
+if [ ! -x "$(command -v awk)" ]; then
+	echo -e "gpseq-seq-gg requires awk to work."
+	exit 1
+fi
+if [ ! -x "$(command -v datamash)" ]; then
+	echo -e "gpseq-seq-gg requires datamash to work."
 	exit 1
 fi
 
@@ -196,7 +204,7 @@ if ( $rm_chimeric ); then
 	echo -e "   > Left with $tcount records."
 	
 	fcount=$(bc <<< "$acount - $tcount")
-	>&2 echo "$fcount chimeras."
+	>&2 echo "$fcount chimeric reads."
 	acount=$tcount
 fi
 
@@ -283,9 +291,13 @@ if [ -n "$chrlist" ]; then
 	echo -e "   > Left with $tcount records."
 
 	fcount=$(bc <<< "$acount - $tcount")
-	>&2 echo "$fcount from removed chromosomes."
+	>&2 echo "$fcount reads from removed chromosomes."
 	acount=$tcount
 fi
+
+# Count number of reads after filtering ----------------------------------------
+nreads=$(samtools view -c "$tspath")
+>&2 echo "$nreads reads left after filtering."
 
 # Perform read shift -----------------------------------------------------------
 
@@ -316,12 +328,20 @@ BEGIN { OFS = FS = "\t"; }
 
 	# Shift position
 	$4 = $4 + shift;
+	print shift | "cat 1>&2"
 
 	# Output
 	print $0;
 }'
-samtools view -f 16 "$tspath" | awk "$awkprg" >> "$fspath"
+samtools view -f 16 "$tspath" | awk "$awkprg" \
+	>> "$fspath" 2> "$outdir/shifts.txt"
 wait
+
+# Average shift
+aveshift=$(cat "$outdir/shifts.txt" | datamash mean 1)
+rm "$outdir/shifts.txt"
+msg="$aveshift bp of average position correction for reverse strand alignments."
+>&2 echo "$msg"
 
 # Identify non-reverse-strand reads with samtools -f 16 and apply CIGAR shift
 if [[ 0 -ne $cslength ]]; then
@@ -342,8 +362,6 @@ fi
 
 # Remove temporary files
 rm "$hspath" "$tspath"
-
-# TODO: save average shift in notes.
 
 # END --------------------------------------------------------------------------
 
