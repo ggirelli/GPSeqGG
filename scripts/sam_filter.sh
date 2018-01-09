@@ -23,7 +23,8 @@ helps="
 
  Description:
   Filter alignment output. Allows to apply a number of filters, depending on the
-  selected options. Uses samtools view to perform filters.
+  selected options. Use samtools view to perform filters. Use awk for line-by-
+  -line file manipulations. Only chromosomes 1-24 (23 = X, 24 = Y) are kept.
 
  Mandatory arguments:
   -i samfile	Input SAM file to be filterd.
@@ -216,7 +217,7 @@ rm "$fspath"
 
 # R1 ---------------------------------------------------------------------------
 if ( $keep_mapped ); then
-	echo " · Keeping only R1 (PE only)..."
+	echo " · Keeping only R1..."
 	samtools view -f 64 -h "$bpath" -@ $threads \
 		> "$outdir/$fname.tmp.bam"
 	wait
@@ -278,7 +279,8 @@ if [ -n "$chrlist" ]; then
 
 		# Print if not in chromosome list.
 		if ( !($3 in ca) ) {
-			print $0;
+			# Output
+			if ( $3+0 > 0 || $3 == "X" || $3 == "Y" ) { print $0; }
 		}
 	}'
 	cat "$hspath" > "$fspath"

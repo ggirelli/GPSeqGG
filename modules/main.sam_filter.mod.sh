@@ -67,11 +67,16 @@ function filter_sam() {
 			match($0, "LS:Z:([^[:blank:]]*)", lseq)
 			match($0, "LQ:Z:([^[:blank:]]*)", lqual)
 
+			# Convert literal chromosomes to numerical
+			if ( "X" == $3 ) { $3 = 23; }
+			if ( "Y" == $3 ) { $3 = 24; }
+
 			# Output
-			print "chr" $3 OFS $4 OFS $5 OFS lseq[1] OFS lqual[1] OFS $1;
+			print $3 OFS $4 OFS $5 OFS lseq[1] OFS lqual[1] OFS $1;
 		}'
 		cat "$cout/$condition/$condition.linkers.filtered.sam" | \
-			awk "$awkprg" > "$cout/$condition/$condition.filtered.umi.pos.txt"
+			grep -v "^\@" | awk "$awkprg" \
+			> "$cout/$condition/$condition.filtered.umi.pos.txt"
 
 		# Update summary -------------------------------------------------------
 
