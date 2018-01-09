@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Clarified neatness level labeling.
 - Promoted centrality estimate from `dev` to `tool`.
 - Now using `samtools` and `awk` for SAM file filtering.
+- Updated documentation.
 
 ### Removed
 - Useless thread declaration when running FASTQC tool.

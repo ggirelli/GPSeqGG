@@ -1,4 +1,4 @@
-Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis (v1.0.0)
+Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis (v2.0.0)
 ===
 
 Visit the [how to page](how-to/) and the [F.A.Q. page](faq/) for more details and what to do in case of an error.
@@ -58,8 +58,7 @@ The steps performed by `main` are the following:
 4. **Read alignment.** First, run `./reads_trim.sh` trim the pattern from the R1 reads (length specified in `patterns.tsv`). Then, Run `./reads_align.sh` and update summary with fraction of mapped reads. Finally, add the patterns to the SAM files (condition.linker.sam)
 5. **SAM filter.** (this step requires a specified `mapqthr` setting) Run `./sam_filter`.
 6. **Prepare UMIs.** If a `maskfile` was specified, UMIs are masked based on the information contained in such file. Run `./umi_group` to group UMIs that are mapped on the same position. Then, run `./pos2cutsite` to group UMIs on a cutsite if a list of known cutsites is provided. Finally, run `./umi_dedupl` to deduplicate UMIs.
-7. **Bin.** Run `./cs_bin` to bin the cutsites and `./umi_bin` to bin the UMIs.
-8. **Analyze UMIs.** Run `./umi_plot` to generate analysis results as figures.
+7. **Estimate library complexity**, using the `preseq` library.
 
 ### Output
 
