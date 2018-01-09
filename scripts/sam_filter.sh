@@ -216,7 +216,7 @@ samtools view -b "$fspath" -@ $threads > "$bpath"
 rm "$fspath"
 
 # R1 ---------------------------------------------------------------------------
-if ( $keep_mapped ); then
+if ( $keep_r1 ); then
 	echo " · Keeping only R1..."
 	samtools view -f 64 -h "$bpath" -@ $threads \
 		> "$outdir/$fname.tmp.bam"
@@ -232,7 +232,7 @@ if ( $keep_mapped ); then
 fi
 
 # Mapped reads -----------------------------------------------------------------
-if ( $keep_r1 ); then
+if ( $keep_mapped ); then
 	echo " · Keeping only mapped reads..."
 	samtools view -F 4 -h "$bpath" -@ $threads \
 		> "$outdir/$fname.tmp.bam"

@@ -59,10 +59,10 @@ function library_run() {
 	fi
 
 	r1=`cat filelist | head -n1`
-	echo "R1 is " $r1
+	echo "R1 is $r1"
 	if [ $numb_of_files -eq 2 ]; then
 	    r2=`cat filelist | tail -n1`
-	    echo "R2 is " $r2
+	    echo "R2 is $r2"
 	fi
 	rm filelist
 
