@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 1.1.0
+# Version: 2.0.0
 # Description: analyze GPSeq sequencing data
 # 
 # Help page: ./main.sh -h

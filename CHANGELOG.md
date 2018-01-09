@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## Unreleased
+### ...
+- ...
+
+
+
+## [2.0.0] - 2017-01-09
 ### Added
 - `preseq` package as a git submodule.
 - Library complexity estimation step, using `preseq` package.
@@ -18,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Removed
 - Useless thread declaration when running FASTQC tool.
+- Binning and plotting step, stored in `deprec` folder.
 
 ### Fixed
 - Input option exceptions.
@@ -96,6 +103,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 [Unreleased] https://github.com/ggirelli/gpseq-seq-gg
+[2.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.0
 [1.1.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.1.0
 [1.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.0.1
 [1.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.0.0
