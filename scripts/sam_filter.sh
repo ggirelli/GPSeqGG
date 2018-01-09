@@ -317,7 +317,6 @@ BEGIN { OFS = FS = "\t"; }
 
 	# Cycle through CIGAR bits and update shift
 	for ( i = 1; i <= length(cv); i++ ) {
-		print cs[i] " " cv[i];
 		if ( cs[i] == "M" || cs[i] == "D" ) {
 			shift += cv[i];
 		}

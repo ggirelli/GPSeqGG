@@ -59,6 +59,20 @@ function filter_sam() {
 			2> "$cout/$condition/$condition.sam_filter_notes.txt" & pid0=$!
 		wait $pid0
 
+		# Extract linker information from SAM file
+		awkprg='
+		BEGIN { OFS = FS = "\t"; }
+		{
+			# Extract linker information
+			match($0, "LS:Z:([^[:blank:]]*)", lseq)
+			match($0, "LQ:Z:([^[:blank:]]*)", lqual)
+
+			# Output
+			print "chr" $3 OFS $4 OFS $5 OFS lseq[1] OFS lqual[1] OFS $1;
+		}'
+		cat "$cout/$condition/$condition.linkers.filtered.sam" | \
+			awk "$awkprg" > "$cout/$condition/$condition.filtered.umi.pos.txt"
+
 		# Update summary -------------------------------------------------------
 
 		# Secondary alignments
