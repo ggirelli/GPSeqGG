@@ -52,9 +52,12 @@ function filter_sam() {
 		if [ -n "$cutsite" ]; then
 			flags="$flags -l ${#cutsite}"
 		fi
+		if [ $numb_of_files -eq 2 ]; then
+		    flags="$flags -1c"
+		fi
 
 		# Additional SAM filters
-		time $scriptdir/sam_filter.sh -p1cm -t $threads -q $mapqthr $flags \
+		time $scriptdir/sam_filter.sh -pm -t $threads -q $mapqthr $flags \
 			-i "$cout/$condition/$condition.linkers.sam" \
 			2> "$cout/$condition/$condition.sam_filter_notes.txt" & pid0=$!
 		wait $pid0
@@ -81,33 +84,35 @@ function filter_sam() {
 		# Update summary -------------------------------------------------------
 
 		# Secondary alignments
-		c=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'secondary alignments' | head -n 1 | cut -d ' ' -f 1`
+		c=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+					grep 'secondary alignments' | head -n 1 | cut -d ' ' -f 1)
 
 		# Chimeric reads
-		c2=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'chimeric reads' | head -n 1 | cut -d ' ' -f 1`
+		c2=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'chimeric reads' | head -n 1 | cut -d ' ' -f 1)
+		if [ -z "$c2" ]; then c2="0"; fi
 
 		# R2 reads	
-		c3=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'R2 reads' | head -n 1 | cut -d ' ' -f 1`
+		c3=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'R2 reads' | head -n 1 | cut -d ' ' -f 1)
+		if [ -z "$c3" ]; then c3="0"; fi
 
 		# Unmapped reads	
-		c4=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'unmapped reads' | head -n 1 | cut -d ' ' -f 1`
+		c4=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'unmapped reads' | head -n 1 | cut -d ' ' -f 1)
 
 		# MAPQ < thr reads	
-		c5=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'reads with MAPQ <' | head -n 1 | cut -d ' ' -f 1`
+		c5=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'reads with MAPQ <' | head -n 1 | cut -d ' ' -f 1)
 
 		# Chr removed reads	
-		c6=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'reads from removed chromosomes' | head -n 1 | cut -d ' ' -f 1`
+		c6=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'reads from removed chromosomes' | head -n 1 | cut -d ' ' -f 1)
 
 		# Surviving reads	
-		c7=`cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
-			grep 'reads left after filtering' | head -n 1 | cut -d ' ' -f 1`
-		p7=`printf "%.2f%%" "$(bc <<< "scale = 4; $c7 / $cond_count * 100")"`
+		c7=$(cat $cout/"$condition"/"$condition".sam_filter_notes.txt | \
+			grep 'reads left after filtering' | head -n 1 | cut -d ' ' -f 1)
+		p7=$(printf "%.2f%%" "$(bc <<< "scale = 4; $c7 / $cond_count * 100")")
 
 		# Add to summary
 		new_fields="\t$c\t$c2\t$c3\t$c4\t$c5\t$c6\t$c7\t$p7"
