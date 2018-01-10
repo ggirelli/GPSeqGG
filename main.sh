@@ -68,7 +68,8 @@ for exp in ${expv[@]}; do library_run $exp; done
 exp0=`echo ${expv[0]} | cut -d ' ' -f 1`
 echo -e "expID\t`head -n 1 "$outdir/$exp0/summary"`" > $outdir/summary
 for exp in ${expv[@]}; do
-	echo -e "$exp\t$(cat $outdir/$exp/summary | sed 1d)" >> $outdir/summary
+	cat $outdir/$exp/summary | sed 1d | \
+		awk -v expID="$exp" '{ print expID "\t" $0; }' >> $outdir/summary
 done
 
 # END --------------------------------------------------------------------------
