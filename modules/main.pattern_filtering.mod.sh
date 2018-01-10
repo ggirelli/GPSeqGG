@@ -19,8 +19,8 @@ function pattern_filtering() {
 	# Count total reads
 	echo -e "Counting total reads..."
 	total_read_count=`wc -l $in/r1oneline.fa | cut -d " " -f 1`
-	header="condition\tpattern\ttrim_len\ttotal_read_count\treads_with_prefix"
-	header="$header\tprefix/total"
+	header="condition\tversion\tpattern\ttrim_len\ttotal_read_count"
+	header="$header\treads_with_prefix\tprefix/total"
 	echo -e $header > $out/summary
 
 	# Work on single conditions
@@ -53,7 +53,8 @@ function pattern_filtering() {
 		perc=`echo $convstr | bc`
 
 		echo -e $header > $cout/"$condition"/summary
-		header="$condition\t$pattern\t$tlen\t$total_read_count\t$count\t$perc%"
+		header="$condition\t$version\t$pattern\t$tlen"
+		header="$header\t$total_read_count\t$count\t$perc%"
 		echo -e $header >> $cout/"$condition"/summary
 		echo -e $header >> $out/summary
 	done
