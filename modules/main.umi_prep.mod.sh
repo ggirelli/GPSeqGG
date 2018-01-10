@@ -71,7 +71,8 @@ function prepare_umi() {
 
 		# Standard bed header
 		trackName="track name=\"$expID.$condition.dedupUMIs\" "
-		trackName="$trackName description=\"emax=$emax,eperc=$eperc"
+		trackName="$trackName description=\"gpseq-seq-gg_v$version"
+		trackName="$trackName,emax=$emax,eperc=$eperc"
 		trackName="$trackName,csRange=$csRange,MAPQthr=$mapqThr,pthr=$pthr"
 
 		if [ -n "$csList" ]; then
