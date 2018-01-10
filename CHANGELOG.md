@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - `preseq` package as a git submodule.
 - Library complexity estimation step, using `preseq` package.
+- Version tracking to bed header and summary tables.
 
 ### Changed
 - Clarified neatness level labeling.
