@@ -151,7 +151,7 @@ echo " · Found $acount records."
 # Primary alignments -----------------------------------------------------------
 if ( $keep_primary ); then
 	echo " · Keeping only primary alignments..."
-	samtools view -F 256 -h "$samfile" -@ $threads \
+	samtools view -F 2048 -h "$samfile" -@ $threads \
 		> "$tspath"
 	wait
 	mv "$tspath" $fspath
@@ -216,6 +216,7 @@ fi
 # Convert to BAM ---------------------------------------------------------------
 echo " · Converting to BAM..."
 bpath="$outdir/$fname.bam"
+if [ ! -e "$fspath" ]; then cp "$samfile" "$fspath"; fi
 samtools view -b "$fspath" -@ $threads > "$bpath"
 rm "$fspath"
 
@@ -282,15 +283,20 @@ rm "$bpath"
 if [ -n "$chrlist" ]; then
 	echo " · Discarding chromosomes [$chrlist]..."
 	awkprg='
-	BEGIN { OFS=FS="\t"; }
-	{
+	BEGIN {
+		OFS=FS="\t";
+		
 		# Identify chromosomes to discard
 		split(cl, ca, ",");
-
+		for ( i = 0; i < length(ca); i++ ) {
+			chrlist[ca[i]] = 1;
+		}
+	}
+	{
 		# Print if not in chromosome list.
-		if ( !($3 in ca) ) {
+		if ( !($3 in chrlist) ) {
 			# Output
-			if ( $3+0 > 0 || $3 == "X" || $3 == "Y" ) { print $0; }
+			if ( $3+0 >= 1 || $3 == "X" || $3 == "Y" ) { print $0; }
 		}
 	}'
 	cat "$hspath" > "$fspath"

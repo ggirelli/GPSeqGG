@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 2.0.0
+# Version: 2.0.1
 # Description: analyze GPSeq sequencing data
 # 
 # Help page: ./main.sh -h
@@ -15,7 +15,7 @@
 
 # ENV VAR ======================================================================
 export LC_ALL=C
-version="2.0.0"
+version="2.0.1dev"
 
 # DEPENDENCIES =================================================================
 
@@ -71,6 +71,11 @@ for exp in ${expv[@]}; do
 	cat $outdir/$exp/summary | sed 1d | \
 		awk -v expID="$exp" '{ print expID "\t" $0; }' >> $outdir/summary
 done
+
+# Recap qc reports with multiqc ------------------------------------------------
+
+source $moddir/main.qc_recap.mod.sh
+execute_step $dontask 'QC recap' qc_recap
 
 # END --------------------------------------------------------------------------
 

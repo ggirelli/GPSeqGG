@@ -4,8 +4,8 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 2.0.1
-# Description: module for quality control.
+# Version: 1.0.0
+# Description: module for quality control recap with multiqc.
 # 
 # ------------------------------------------------------------------------------
 
@@ -13,14 +13,9 @@
 
 # START ========================================================================
 
-function quality_control() {
-	echo -e 'Quality control\n=====================\n'
-	# Produce quality control summarie(s)
-	if [ -z "$r2" ]; then
-		time $scriptdir/quality_control.sh -t $threads -o $xout -1 $r1
-	else
-		time $scriptdir/quality_control.sh -t $threads -o $xout -1 $r1 -2 $r2
-	fi
+function qc_recap() {
+	echo -e '\nQC recap\n====================='
+	multiqc -o "$outdir" "$outdir"
 }
 
 ################################################################################

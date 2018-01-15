@@ -16,8 +16,9 @@ git submodule update
 * `fastqc` v0.11.4
 * `scan_for_matches`
 * `samtools` v1.3.1
+* `multiqc` v1.5.0
 
-On Ubuntu, run: `sudo apt install bwa bowtie2 fastqc`
+On Ubuntu, run: `sudo apt install bwa bowtie2 fastqc; pip install multiqc;`
 
 ### scan_for_matches
 
@@ -35,7 +36,7 @@ If, after installation, fastqc complains of missing files, download them from [h
 
 * argparser
 * data.table
-* ggplot2
+* ggplot2.1
 * grid
 * gridExtra
 * parallel

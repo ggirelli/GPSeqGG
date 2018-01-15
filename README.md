@@ -1,4 +1,4 @@
-gpseq-seq-gg \[v2.0.0]
+gpseq-seq-gg \[v2.0.1]
 ===
 
 A pipeline for Genomic loci Positioning by Sequencing (GPSeq) sequencing data analysis.

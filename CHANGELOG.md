@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 
+## [2.0.1] - 
+### Fixed
+- Fixed secondary alignments removal during SAM filtering step.
+- Fixed chromosome removal during SAM filtering step.
+
+### Added
+- `multiqc` report recap as a last step of the pipeline.
+
+
+
 ## [2.0.0] - 2017-01-09
 ### Added
 - `preseq` package as a git submodule.
@@ -105,6 +115,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 [Unreleased] https://github.com/ggirelli/gpseq-seq-gg
+[2.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.1
 [2.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.0
 [1.1.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.1.0
 [1.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.0.1
