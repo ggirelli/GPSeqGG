@@ -271,7 +271,7 @@ fi
 # Check settings ---------------------------------------------------------------
 
 # Settings header
-settings=""
+settings="# gpseq-seq-gg v$version\n"
 
 if $dontask; then
 	settings="$settings
