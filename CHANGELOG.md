@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 
-## [2.0.1] - 
+## [2.0.1] - 2018-01-16
 ### Fixed
 - Fixed secondary alignments removal during SAM filtering step.
 - Fixed chromosome removal during SAM filtering step.
