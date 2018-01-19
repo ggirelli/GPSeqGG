@@ -217,7 +217,7 @@ fi
 echo " · Converting to BAM..."
 bpath="$outdir/$fname.bam"
 if [ ! -e "$fspath" ]; then cp "$samfile" "$fspath"; fi
-samtools view -b "$fspath" -@ $threads > "$bpath"
+samtools view -b -h "$fspath" -@ $threads > "$bpath"
 rm "$fspath"
 
 # R1 ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ fi
 
 # Convert back to sam ----------------------------------------------------------
 echo " · Converting to SAM..."
-samtools view "$bpath" -@ $threads > "$tspath"
+samtools view -h "$bpath" -@ $threads > "$tspath"
 rm "$bpath"
 
 # Chromosome filter ------------------------------------------------------------
@@ -316,7 +316,7 @@ else
 fi
 
 # Count number of reads after filtering ----------------------------------------
-nreads=$(samtools view -c "$tspath")
+nreads=$(samtools view -c "$tspath" -@ $threads)
 >&2 echo "$nreads reads left after filtering."
 
 # Perform read shift -----------------------------------------------------------
