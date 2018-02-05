@@ -61,11 +61,14 @@ function library_complexity() {
 			> $cout/$condition/$prefix".umi_counts.tmp"
 
 		# Run preseq
-		$preseq c_curve -s 100 -o $cout/$condition/"lc."$prefix".c_curve.tmp" \
+		$preseq c_curve -s 100 \
+			-o $cout/$condition/$prefix"."$condition".c_curve.tmp" \
 			-V $cout/$condition/$prefix".umi_counts.tmp"
-		$preseq lc_extrap -o $cout/$condition/"lc."$prefix".lc_extrap.tmp" \
+		$preseq lc_extrap \
+			-o $cout/$condition/$prefix"."$condition".lc_extrap.tmp" \
 			-V $cout/$condition/$prefix".umi_counts.tmp"
-		$preseq bound_pop -o $cout/$condition/"lc."$prefix".bound_pop.tmp" \
+		$preseq bound_pop \
+			-o $cout/$condition/$prefix"."$condition".bound_pop.tmp" \
 			-V $cout/$condition/$prefix".umi_counts.tmp"
 
 		# Add condition column
