@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 2.0.1
+# Version: 2.0.2
 # Description: analyze GPSeq sequencing data
 # 
 # Help page: ./main.sh -h
@@ -16,7 +16,7 @@
 # ENV VAR ======================================================================
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
-version="2.0.1"
+version="2.0.2"
 
 # DEPENDENCIES =================================================================
 

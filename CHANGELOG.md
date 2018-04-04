@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## Unreleased
+### ...
+- ...
+
+
+## [2.0.2] - 2018-04-04
+### Changed
+- Updated submodules.
+
 ### Fixed
 - Now properly summarizing preseq reports with multiqc.
+- Fixed alignment fraction calculation.
 
 
 
@@ -116,6 +125,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 [Unreleased] https://github.com/ggirelli/gpseq-seq-gg
+[2.0.2] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.2
 [2.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.1
 [2.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.0
 [1.1.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v1.1.0
