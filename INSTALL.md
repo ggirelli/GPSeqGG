@@ -17,8 +17,9 @@ git submodule update
 * `scan_for_matches`
 * `samtools` v1.3.1
 * `multiqc` v1.5.0
+* `datamash`
 
-On Ubuntu, run: `sudo apt install bwa bowtie2 fastqc; pip install multiqc;`
+On Ubuntu, run: `sudo apt install datamash bwa bowtie2 fastqc; pip install multiqc;`
 
 ### scan_for_matches
 
