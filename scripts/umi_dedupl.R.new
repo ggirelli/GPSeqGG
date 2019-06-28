@@ -371,7 +371,7 @@ u = rbindlist(mclapply(split(u, u$group),  function(rowList, q2rm, maxGroup) {
 	unlink(q2rm)
 	unlink(rowList)
 	return(out)
-}, q2rm, u[, max(group)], mc.cores = num_proc, mc.preschedule = T))
+}, q2rm, u[, max(group)], mc.cores = num_proc, mc.preschedule = F))
 cat(' >>> Removed.\n')
 
 # Strict unique ----------------------------------------------------------------
@@ -398,7 +398,7 @@ u = rbindlist(mclapply(split(u, u$group), function(rowList, maxGroup) {
 	}))
 	unlink(rowList)
 	return(out)
-}, u[, max(group)], mc.cores = num_proc, mc.preschedule = T))
+}, u[, max(group)], mc.cores = num_proc, mc.preschedule = F))
 
 nu = u[, sum(preN)]
 nurm = u[, sum(preN-postN)]
