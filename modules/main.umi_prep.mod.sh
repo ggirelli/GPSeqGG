@@ -53,10 +53,7 @@ function prepare_umi() {
 		if [[ $umiLength -ne 0 ]]; then
 			# Deduplicating UMIs -----------------------------------------------
 			echo -e "\nDeduplicating UMIs ..."
-			#time $scriptdir/umi_dedupl.R $cout/$condition/ $expID $condition \
-			#	-p $platform -co $pthr -c $threads -cs $cslbool \
-			#	-em $emax -ep $eperc & pid0=$!
-			time $scriptdir/umi_dedupl.R.new $cout/$condition/ $expID $condition \
+			time $scriptdir/umi_dedupl.R $cout/$condition/ $expID $condition \
 				-p $platform --co $pthr -c $threads --cs $cslbool \
 				--em $emax --ep $eperc & pid0=$!
 			wait $pid0

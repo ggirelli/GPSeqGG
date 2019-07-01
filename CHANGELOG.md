@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## Unreleased
+### ...
+- ...
+
+
+
+## [2.0.3] - 2019-07-01
+### Changed
+- Optimized UMI de-duplication step.
+
 ### Fixed
 - Fraction of final output VS input with prefix.
 
@@ -125,6 +134,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 [Unreleased] https://github.com/ggirelli/gpseq-seq-gg
+[2.0.3] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.3
 [2.0.2] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.2
 [2.0.1] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.1
 [2.0.0] https://github.com/ggirelli/gpseq-seq-gg/releases/tag/v2.0.0

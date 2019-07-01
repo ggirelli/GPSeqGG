@@ -4,7 +4,7 @@
 # 
 # Author: Gabriele Girelli
 # Email: gigi.ga90@gmail.com
-# Version: 1.0.0
+# Version: 2.0.0
 # Description: filter and deduplicate UMIs
 # 
 # ------------------------------------------------------------------------------
@@ -13,10 +13,12 @@
 
 # DEPENDENCIES =================================================================
 
-suppressMessages(library(argparser))
-suppressMessages(library(data.table))
-suppressMessages(library(parallel))
-suppressMessages(library(readr))
+suppressMessages(require(argparser))
+suppressMessages(require(cowplot))
+suppressMessages(require(data.table))
+suppressMessages(require(ggplot2))
+suppressMessages(require(parallel))
+theme_set(theme_cowplot())
 
 # INPUT ========================================================================
 
@@ -32,19 +34,19 @@ parser = add_argument(parser, arg = 'condition',
 	help = 'Condition folder name (e.g., 400U2h).')
 
 # Define elective arguments
-parser = add_argument(parser, arg = '--cutsites', short = '-cs',
+parser = add_argument(parser, arg = '--cutsites', short = '--cs',
 	default = 0, nargs = 1,
 	help = 'Binary flag for cutsite assignment. 1 for, and 0 for no cutsites')
 parser = add_argument(parser, arg = '--platform', short = '-p',
 	default = 'L', nargs = 1,
 	help = 'Sequencing platform identifier.')
-parser = add_argument(parser, arg = '--cutoff', short = '-co',
+parser = add_argument(parser, arg = '--cutoff', short = '--co',
 	default = 1, nargs = 1,
 	help = 'Probability cutoff, compared to the automatic for filtering.')
-parser = add_argument(parser, arg = '--emax', short = '-em',
+parser = add_argument(parser, arg = '--emax', short = '--em',
 	default = 1e-3, nargs = 1,
 	help = 'Maximum error probability for filtering.')
-parser = add_argument(parser, arg = '--eperc', short = '-ep',
+parser = add_argument(parser, arg = '--eperc', short = '--ep',
 	default = 20, nargs = 1,
 	help = 'Maximum percentage of bases with emax error probability.')
 parser = add_argument(parser, arg = '--num-proc', short = '-c',
@@ -52,7 +54,7 @@ parser = add_argument(parser, arg = '--num-proc', short = '-c',
 	default = 1, type = class(0))
 parser = add_argument(parser, arg = '--num-reg', short = '-r',
 	help = 'Number of regions per job during parallel computation.',
-	default = 10000, type = class(0))
+	default = 1000, type = class(0))
 parser = add_argument(parser, arg = '--suffix',
 	help = 'Suffix to be added to output files.',
 	default = '', nargs = 1)
@@ -63,7 +65,21 @@ p = parse_args(parser)
 # Attach argument values to variables
 attach(p['' != names(p)])
 
+setDTthreads(num_proc)
+
 # CONSTANTS ====================================================================
+
+# dirpath = "/mnt/data/preProcess_GPSeq/B48_1min/TK75/conditions/1min"
+# experiment = "TK75"
+# condition = "1min"
+# platform = "L"
+# cutoff = 0
+# num_reg = 1000
+# num_proc = 10
+# cutsites = 1
+# emax = 1e-3
+# eperc = 20
+# suffix = ""
 
 qabs = list(
   S = list(
@@ -254,31 +270,27 @@ p_seq_match = function(s1, s2, q1, q2,
 
 # Read UMI file ----------------------------------------------------------------
 
-# Prepare filename
 fname <- 'UMIpos'
-if ( 1 == cutsites ) fname <- paste0(fname, '.atcs')
+if ( 1 == cutsites ) fname <- sprintf('%s.atcs', fname)
 
-# Read UMI table
 cat(' · Reading UMIs ...\n')
-u <- read_delim(paste0(dirpath, fname, '.txt'),
-	'\t', col_names=c('chr', 'pos', 'seq', 'qual'), col_types='iccc')
-u$pos <- as.numeric(u$pos)
+u <- fread(file.path(dirpath, sprintf('%s.txt', fname)),
+	col.names=c('chr', 'pos', 'seq', 'qual'), nThread=num_proc)
+
+cat(' >>> Pre-processing ...\n')
+u$seq = mclapply(u$seq, function(x) unlist(strsplit(x, " ", fixed = T)),
+	mc.cores = num_proc)
+u$qual = mclapply(u$qual, function(x) unlist(strsplit(x, " ", fixed = T)),
+	mc.cores = num_proc)
+u$n = unlist(mclapply(u$seq, length, mc.cores = num_proc))
 
 # Initialize -------------------------------------------------------------------
 
 # Check UMI length
 cat(' · Checking UMI length ...\n')
-ulen = unique(unlist(mclapply(u$seq[1:10],
-	FUN = function(seq) {
-		return(unique(unlist(
-			lapply(
-				unique(unlist(strsplit(seq, ' ', fixed = T))),
-				FUN = nchar
-			)
-		)))
-	}
-	, mc.cores = num_proc
-)))
+
+ulen = unique(nchar(unique(unlist(u$seq))))
+
 if ( 1 < length(ulen) ) {
 	cat(paste0('  >> Multiple UMI length detected: ',
 		paste(ulen, collapse = ' '), ' [nt]\n'))
@@ -290,85 +302,10 @@ if ( 1 < length(ulen) ) {
 
 # Count UMIs
 cat(' · Counting UMIs ...\n')
-n = unlist(mclapply(strsplit(u$seq, ' ', fixed = T),
-	FUN = length, mc.cores = num_proc))
-
-log = paste0(sum(n), ' non-orphan reads.\n')
+log = paste0(u[, sum(n)], ' non-orphan reads.\n')
 
 # Build quality data.frame
 qabd = mk_qab_df(qab, qab_min)
-
-# Filter based on self-match probability ---------------------------------------
-
-if ( 0 < cutoff ) {
-	cat(paste0(' · Filtering UMIs based on self-match probability.\n'))
-
-	# Identify unique quals
-	quals = unlist(mclapply(u$qual, FUN = strsplit, ' ', fixed = T
-		, mc.cores = num_proc))
-	unique_quals = unique(quals)
-
-	# Calculate self-match probability for unique quals
-	uq_ps = unlist(mclapply(unique_quals,
-		FUN = function(x) {
-			p_seq_match(x, x, x, x, qabd = qabd)
-		}
-		, mc.cores = num_proc))
-
-	# Get self-match probability distribution
-	qual_ps = uq_ps[match(quals, unique_quals)]
-
-	# Calculate automatic cutoff
-	auto_cutoff = quantile(qual_ps, .25) - 1.5 * IQR(qual_ps)
-
-	# Compare with manual cutoff
-	if ( 1 == which.min(c(auto_cutoff, cutoff)) ) {
-		cat(paste0(' ·̣ Using automatic cutoff: ', auto_cutoff, '\n'))
-	} else {
-		cat(paste0(' ·̣ Automatic cutoff: ', auto_cutoff, '\n'))
-		cat(paste0(' ·̣ Using manual cutoff: ', cutoff, '\n'))
-	}
-	cutoff = min(auto_cutoff, cutoff)
-
-	# Count outliers
-	perc_outliers = round(sum(qual_ps < cutoff) / sum(n) * 100, 2)
-	cat(paste0(' >>> ', perc_outliers,
-		'% of the UMIs are being discarded...\n'))
-
-	# Identify outlier quals
-	out_quals = unique_quals[which(uq_ps < cutoff)]
-
-	# Discard outliers
-	u = rbindlist(mclapply(split(u, seq(nrow(u))),
-		FUN = function(row, out_quals) {
-			# Retrieve single sequences and quality strings
-			ss = unlist(strsplit(row$seq, ' ', fixed = T))
-			qs = unlist(strsplit(row$qual, ' ', fixed = T))
-
-			# Identify non-outliers
-			toRemove = which(qs %in% out_quals)
-
-			if ( 0 != length(toRemove) ) {
-				# Update row
-				row$seq = paste(ss[-toRemove], collapse = ' ')
-				row$qual = paste(qs[-toRemove], collapse = ' ')
-			}
-
-			# Output
-			return(row)
-		}, out_quals
-		, mc.cores = num_proc
-	))
-
-	# Reset counters
-	n = unlist(mclapply(strsplit(u$seq, ' ', fixed = T),
-		FUN = length, mc.cores = num_proc))
-
-	# Log
-	cat(paste0(' >>> Left with ', sum(n), ' UMIs.\n'))
-} else {
-	cat(paste0(' · Skipped UMI filtering based on self-match probability.\n'))
-}
 
 # Filter based on single-base quality ------------------------------------------
 
@@ -387,145 +324,137 @@ cat(paste0(' >>> eperc: ', eperc, '\n'))
 ethr = emin * ulen * eperc + emax * ulen * (1 - eperc)
 cat(paste0(' · Calculated error probability threshold: ', round(ethr, 6), '\n'))
 
-# Retrieve qualities
-quals = unlist(strsplit(u$qual, ' ', fixed = T))
-uquals = unique(quals)
-cat(paste0(' · Found ', length(uquals), ' unique quality strings (/',
-	sum(n), ').\n'))
+qData = data.table(q = unlist(u$qual)
+	)[, .(n = .N), by = q]
+qData$ps = unlist(mclapply(qData$q, function(q) {
+	sum(Qstring_to_Perrs(q, qabd=qabd)) }))
 
-# Calculate quality of every uniqued quality string
-pqs = lapply(uquals,
-	FUN = function(q) {
-		sum(Qstring_to_Perrs(q, qabd = qabd))
-	}
-)
-rmq = uquals[which(pqs > ethr)]
-nqkept = length(which(! quals %in% rmq))
-cat(paste0(' >>> ', nqkept, '/', length(quals),
-	' (', round(nqkept/length(quals)*100, 2), '%) UMIs pass the filter.', '\n'))
-log = paste0(log, nqkept, ' reads pass the read quality filter (',
-	round(nqkept/length(quals)*100, 2), '%).\n')
+qData[, toRM := F]
+qData[ps > ethr, toRM := T]
+
+nq = qData[, sum(n)]
+nqkept = qData[(!toRM), sum(n)]
+cat(sprintf(' >>> %d/%d (%.2f%%) UMIs pass the filter.\n',
+	nqkept, nq, nqkept/nq*100))
+log = paste0(log, sprintf('%d reads pass the read quality filter (%.2f%%).\n',
+	nqkept, nqkept/nq*100))
 
 # Remove those that do not pass the threshold by checking from the overall index
 cat(' · Removing UMIs ...\n')
-groupIDs = findInterval(seq(1, nrow(u)), seq(1, nrow(u), by = num_reg))
-u = as.data.frame(rbindlist(mclapply(split(u, groupIDs),
-	FUN = function(row) {
-		ss = unlist(strsplit(row$seq, ' ', fixed = T))
-		qs = unlist(strsplit(row$qual, ' ', fixed = T))
+q2rm = qData[(toRM), q]
 
-		return(data.frame(
+u[, toRM := F]
+u[1 == n, toRM := qual %in% q2rm]
+u = u[(!toRM)]
+u[, toRM := NULL]
+
+u$group = findInterval(seq(1, nrow(u)), seq(1, nrow(u), by = num_reg))
+u = rbindlist(mclapply(split(u, u$group),  function(rowList, q2rm, maxGroup) {
+	cat(sprintf("%d/%d (%.2f%%)\n", rowList[1, group], maxGroup,
+		rowList[1, group]/maxGroup*100))
+	rowList[, group := NULL]
+	out = rbindlist(lapply(split(rowList, 1:nrow(rowList)), function(row) {
+		if ( 1 == row$n ) return(row)
+		toRM = unlist(row$qual) %in% q2rm
+		if ( all(toRM) ) return(NULL)
+		out = data.table(
 			chr = row$chr,
 			pos = row$pos,
-			seq = paste(ss[!qs %in% rmq], collapse = ' '),
-			qual = paste(qs[!qs %in% rmq], collapse = ' '),
-			stringsAsFactors = F
-		))
-	}
-	, mc.cores = num_proc, mc.preschedule = F
-)), stringsAsFactors = F)
+			seq = list(unlist(row$seq)[!toRM]),
+			qual = list(unlist(row$qual)[!toRM]),
+			n = row$n - sum(toRM)
+		)
+		unlink(toRM)
+		unlink(row)
+		return(out)
+	}))
+	unlink(q2rm)
+	unlink(rowList)
+	return(out)
+}, q2rm, u[, max(group)], mc.cores = num_proc, mc.preschedule = F))
 cat(' >>> Removed.\n')
-
-# Recount UMIs
-n = unlist(lapply(u$seq,
-	FUN=function(x) {
-		length(unlist(strsplit(x, ' ', fixed = T)))
-	}
-))
-
-# Remove cutsites with no UMIs left
-nempty = sum(0 == n)
-if ( 0 != nempty ) {
-	cat(paste0(' · Removing ', nempty, ' locations left with no UMIs...\n'))
-	u = u[-which(0 == n),]
-	n = n[-which(0 == n)]
-}
 
 # Strict unique ----------------------------------------------------------------
 
 # Perform strict unique
 cat(' · Performing strict UMI deduplication...\n')
-uniqc = as.data.frame(rbindlist(mclapply(u$seq,
-	FUN = function(ss) {
-		# In case of no UMIs
-		if ( 0 == nchar(ss) )
-			return(data.frame(umis = "", counts = ""))
-
-		# Strict unique and occurrence count
-		t=table(unlist(strsplit(ss, ' ', fixed = T)))
-		data.frame(
-			umis = paste(names(t), collapse = ' '),
-			counts = paste(as.character(t), collapse = ' ')
+u$group = findInterval(seq(1, nrow(u)), seq(1, nrow(u), by = num_reg))
+u = rbindlist(mclapply(split(u, u$group), function(rowList, maxGroup) {
+	cat(sprintf("%d/%d (%.2f%%)\n", rowList[1, group], maxGroup,
+		rowList[1, group]/maxGroup*100))
+	rowList[, group := NULL]
+	out = rbindlist(lapply(split(rowList, 1:nrow(rowList)), function(row) {
+		uniqSeq = unique(unlist(row$seq))
+		out = data.table(
+			chr = row$chr,
+			pos = row$pos,
+			seq = list(uniqSeq),
+			preN = row$n,
+			postN = length(uniqSeq)
 		)
-	}
-	, mc.cores = num_proc, mc.preschedule = F
-)))
+		unlink(uniqSeq)
+		unlink(row)
+		return(out)
+	}))
+	unlink(rowList)
+	return(out)
+}, u[, max(group)], mc.cores = num_proc, mc.preschedule = F))
 
-uniqued_seq = as.character(uniqc$umis)
-
-# Count delta-N
-deltan = unlist(mclapply(strsplit(uniqued_seq, ' ', fixed = T),
-	FUN = length, mc.cores = num_proc))
-
-# Log
-cat(paste0(' >>> ', sum(n - deltan), ' (',
-	round(sum(n - deltan) / sum(n) * 100, 2),
-	'%) UMIs identified as duplicates and removed.\n'))
-log=paste0(log, sum(n - deltan), ' (',
-	round(sum(n - deltan) / sum(n) * 100, 2), '%) duplicated UMIs.\n',
-	sum(deltan), ' UMIs left after deduplication.\n')
-cat(paste0(' >>> Remaining UMIs: ', sum(deltan), '\n'))
-
-# Unique UMI list --------------------------------------------------------------
-
-uu = data.frame(
-	chr = u$chr,
-	pos = u$pos,
-	seq = uniqued_seq,
-	counts = as.character(uniqc$counts),
-	stringsAsFactors = F
-)
-
-cat(' · Saving de-duplicated UMI list ...\n')
-fname <- 'UMIpos.unique'
-if ( 1 == cutsites ) fname <- paste0(fname, '.atcs')
-write.table(as.matrix(uu), paste0(dirpath, fname, suffix, '.txt'),
-	row.names = F, col.names = F, sep = '\t', quote = F)
+nu = u[, sum(preN)]
+nurm = u[, sum(preN-postN)]
+nuk = u[, sum(postN)]
+cat(sprintf(' >>> %d (%.2f%%) UMIs identified as duplicates and removed.\n',
+	nurm, nurm/nu*100))
+log=sprintf('%s%d (%.2f%%) duplicated UMIs.\n%d UMIs left after deduplication.\n',
+	log, nurm, nurm/nu*100, nuk)
+cat(sprintf(' >>> Remaining UMIs: %d\n', nuk))
 
 # Plot -------------------------------------------------------------------------
 
 cat(' · Generating UMI deduplication report ...\n')
 
-# Output to umi_dedup.report.png
-png(paste0(dirpath, 'umi_dedup.report.png'), width = 1200, height = 1200)
-layout(matrix(c(1, 1, 2, 3), ncol = 2, byrow = T))
+png(file.path(dirpath, 'umi_dedup.report.png'), width = 1200, height = 1200)
+p1 = ggplot(u, aes(x = postN / preN)
+	) + geom_histogram(breaks = seq(0, 1, by = 1/20),
+		aes(y = ..density..), fill = NA, color = "black"
+	) + geom_density(color = "blue", linetype = "dotted"
+	) + xlab("Unique/Total UMIs per cutsite"
+	) + xlim(0, 1
+	) + ylab("Density"
+	) + ggtitle(sprintf('%s ~ %s', experiment, condition))
 
-# Unique/total UMIs distribution
-hist(deltan / n, prob = T, xlab = 'Unique/Total UMIs per cutsite',
-	main = paste0(experiment, ' ~ ', condition), cex.lab = 1.5,
-	cex.axis = 1.5, cex.main = 2)
-lines(density(deltan / n, na.rm = T), col = 4, lty = 3)
+p2 = ggplot(u, aes(y = preN, x = factor(1))
+	) + geom_boxplot(outlier.shape = NA
+	) + geom_jitter(width = .2, alpha = .5, size = .2, color = "#009687"
+	) + xlab("") + ylab("UMIs per cutsite"
+	) + scale_y_log10() + theme(axis.text.x = element_blank(),
+		axis.ticks.x = element_blank())
 
-# Pre-deduplication boxplot
-boxplot(n, outline = F, ylim = c(1, max(n)), log = 'y',
-	ylab = 'Number of UMIs per cutsite', cex.lab = 1.5,
-	cex.axis = 1.5, cex.main = 2)
-stripchart(n, vertical = T, add = T, method = 'j', pch = 20, cex = .5,
-	col = rgb(0, 150, 135, 50, maxColorValue = 255))
+p3 = ggplot(u, aes(y = postN, x = factor(1))
+	) + geom_boxplot(outlier.shape = NA
+	) + geom_jitter(width = .2, alpha = .5, size = .2, color = "#009687"
+	) + xlab("") + ylab("Unique UMIs per cutsite"
+	) + scale_y_log10() + theme(axis.text.x = element_blank(),
+		axis.ticks.x = element_blank())
 
-# Post-deduplication boxplot
-boxplot(deltan, outline = F, ylim = c(1, max(deltan)), log = 'y',
-	ylab = 'Unique UMIs per cutsite', cex.lab = 1.5,
-	cex.axis = 1.5, cex.main = 2)
-stripchart(deltan, vertical = T, add = T, method = 'j', pch = 20, cex = .5,
-	col = rgb(0, 150, 135, 50, maxColorValue = 255))
-
-# Save to file
+plot_grid(p1, plot_grid(p2, p3, ncol = 2), nrow = 2)
 graphics.off()
+
+# Export deduplicated UMIs -----------------------------------------------------
+
+setnames(u, "postN", "counts")
+u[, preN := NULL]
+u$seq = unlist(lapply(u$seq, paste, collapse = " "))
+cat(' · Saving de-duplicated UMI list ...\n')
+fname <- 'UMIpos.unique'
+if ( 1 == cutsites ) fname <- sprintf('%s.atcs', fname)
+write.table(as.matrix(u),
+	file.path(dirpath, sprintf('%s%s.txt', fname, suffix)),
+	row.names = F, col.names = F, sep = '\t', quote = F)
 
 # Write log --------------------------------------------------------------------
 
-logfile = paste0(dirpath, condition, '.umi_prep_notes.txt')
+logfile = file.path(dirpath, sprintf('%s.umi_prep_notes.txt', condition))
 log = unlist(strsplit(log, '\n', fixed = T))
 write.table(log, logfile, row.names = F, col.names = F, quote = F, append = T)
 
