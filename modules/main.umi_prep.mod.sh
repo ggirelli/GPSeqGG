@@ -54,8 +54,8 @@ function prepare_umi() {
 			# Deduplicating UMIs -----------------------------------------------
 			echo -e "\nDeduplicating UMIs ..."
 			time $scriptdir/umi_dedupl.R $cout/$condition/ $expID $condition \
-				-p $platform -co $pthr -c $threads -cs $cslbool \
-				-em $emax -ep $eperc & pid0=$!
+				-p $platform --co $pthr -c $threads --cs $cslbool \
+				--em $emax --ep $eperc & pid0=$!
 			wait $pid0
 		else
 			if [[ -n "$csList" ]]; then
@@ -101,7 +101,7 @@ function prepare_umi() {
 		# Update summary -------------------------------------------------------
 
 		# Prefix reads
-		npr=`grep -P "^$condition" $out/summary | cut -f 5 | head -n 1`
+		npr=`grep -P "^$condition" $out/summary | cut -f 6 | head -n 1`
 
 		# Input reads
 		ir=`cat $cout/"$condition"/"$condition".umi_prep_notes.txt | \
